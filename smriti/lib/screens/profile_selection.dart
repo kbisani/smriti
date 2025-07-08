@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme.dart';
 
 class ProfileSelectionPage extends StatelessWidget {
   final List<Map<String, String>> profiles = const [
@@ -11,7 +12,7 @@ class ProfileSelectionPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
@@ -20,11 +21,7 @@ class ProfileSelectionPage extends StatelessWidget {
             children: [
               Text(
                 'Welcome back, Krishna 👋',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
+                style: AppTextStyles.headline,
               ),
               const SizedBox(height: 32),
               Expanded(
@@ -39,11 +36,12 @@ class ProfileSelectionPage extends StatelessWidget {
                   itemBuilder: (context, index) {
                     final profile = profiles[index];
                     return Card(
+                      color: AppColors.card,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),
                       elevation: 4,
-                      shadowColor: const Color.fromARGB(255, 108, 109, 118).withOpacity(0.08),
+                      shadowColor: AppColors.border.withOpacity(0.08),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 8.0),
                         child: Column(
@@ -51,24 +49,16 @@ class ProfileSelectionPage extends StatelessWidget {
                           children: [
                             CircleAvatar(
                               radius: 36,
-                              backgroundColor: Colors.indigo[100],
+                              backgroundColor: AppColors.primary.withOpacity(0.08),
                               child: Text(
                                 profile['initials']!,
-                                style: TextStyle(
-                                  fontSize: 32,
-                                  color: Colors.black,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                style: AppTextStyles.avatarInitials,
                               ),
                             ),
                             const SizedBox(height: 16),
                             Text(
                               profile['name']!,
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.black,
-                              ),
+                              style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600),
                             ),
                           ],
                         ),
