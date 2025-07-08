@@ -1,13 +1,79 @@
 import 'package:flutter/material.dart';
 import '../theme.dart';
+import '../models/profile.dart';
+import '../storage/hive_profile_storage.dart';
+import 'add_profile_page.dart';
+import 'dart:async';
 
-class ProfileSelectionPage extends StatelessWidget {
-  final List<Map<String, String>> profiles = const [
-    {'name': 'Sudha', 'initials': 'S'},
-    {'name': 'Krishna', 'initials': 'K'},
-    {'name': 'Ravi', 'initials': 'R'},
-    {'name': 'Meera', 'initials': 'M'},
-  ];
+class ProfileSelectionPage extends StatefulWidget {
+  @override
+  State<ProfileSelectionPage> createState() => _ProfileSelectionPageState();
+}
+
+class _ProfileSelectionPageState extends State<ProfileSelectionPage> {
+  List<Profile> _profiles = [];
+  bool _loading = true;
+  final ScrollController _scrollController = ScrollController();
+  Timer? _autoScrollTimer;
+  bool _userInteracted = false;
+
+  static const double cardWidth = 180; // 50% larger than 120
+  static const double cardHeight = 240; // 50% larger than 160
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfiles();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _startAutoScroll());
+  }
+
+  @override
+  void dispose() {
+    _autoScrollTimer?.cancel();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _startAutoScroll() {
+    _autoScrollTimer = Timer.periodic(const Duration(milliseconds: 30), (_) {
+      if (_userInteracted) return;
+      if (!_scrollController.hasClients) return;
+      final maxScroll = _scrollController.position.maxScrollExtent;
+      final current = _scrollController.offset;
+      if (current < maxScroll) {
+        _scrollController.jumpTo((current + 0.7).clamp(0, maxScroll));
+      } else {
+        _scrollController.jumpTo(0);
+      }
+    });
+  }
+
+  void _onUserInteraction() {
+    if (!_userInteracted) {
+      setState(() {
+        _userInteracted = true;
+      });
+      _autoScrollTimer?.cancel();
+    }
+  }
+
+  Future<void> _loadProfiles() async {
+    setState(() => _loading = true);
+    final profiles = await HiveProfileStorage().getProfiles();
+    setState(() {
+      _profiles = profiles;
+      _loading = false;
+    });
+  }
+
+  Future<void> _addProfile() async {
+    final result = await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => AddProfilePage()),
+    );
+    if (result == true) {
+      _loadProfiles();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -16,58 +82,98 @@ class ProfileSelectionPage extends StatelessWidget {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Welcome back, Krishna 👋',
-                style: AppTextStyles.headline,
-              ),
-              const SizedBox(height: 32),
-              Expanded(
-                child: GridView.builder(
-                  itemCount: profiles.length,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 24,
-                    crossAxisSpacing: 24,
-                    childAspectRatio: 0.85,
-                  ),
-                  itemBuilder: (context, index) {
-                    final profile = profiles[index];
-                    return Card(
-                      color: AppColors.card,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      elevation: 4,
-                      shadowColor: AppColors.border.withOpacity(0.08),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 8.0),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            CircleAvatar(
-                              radius: 36,
-                              backgroundColor: AppColors.primary.withOpacity(0.08),
-                              child: Text(
-                                profile['initials']!,
-                                style: AppTextStyles.avatarInitials,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              profile['name']!,
-                              style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600),
-                            ),
-                          ],
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  'Welcome back, Krishna 👋',
+                  style: AppTextStyles.headline.copyWith(fontSize: 36),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 40),
+                _loading
+                    ? CircularProgressIndicator()
+                    : SizedBox(
+                        height: cardHeight,
+                        child: Listener(
+                          onPointerDown: (_) => _onUserInteraction(),
+                          child: ListView.separated(
+                            controller: _scrollController,
+                            scrollDirection: Axis.horizontal,
+                            itemCount: _profiles.length + 1,
+                            separatorBuilder: (_, __) => const SizedBox(width: 36),
+                            itemBuilder: (context, index) {
+                              if (index == _profiles.length) {
+                                // Add Profile Card
+                                return GestureDetector(
+                                  onTap: _addProfile,
+                                  child: Card(
+                                    color: AppColors.card,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(28),
+                                    ),
+                                    elevation: 6,
+                                    shadowColor: AppColors.border.withOpacity(0.10),
+                                    child: SizedBox(
+                                      width: cardWidth,
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          CircleAvatar(
+                                            radius: 54,
+                                            backgroundColor: AppColors.primary.withOpacity(0.08),
+                                            child: Icon(Icons.add, size: 54, color: AppColors.primary),
+                                          ),
+                                          const SizedBox(height: 24),
+                                          Text(
+                                            'Add',
+                                            style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600, fontSize: 20),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }
+                              final profile = _profiles[index];
+                              return Card(
+                                color: AppColors.card,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(28),
+                                ),
+                                elevation: 6,
+                                shadowColor: AppColors.border.withOpacity(0.10),
+                                child: SizedBox(
+                                  width: cardWidth,
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 54,
+                                        backgroundColor: AppColors.primary.withOpacity(0.08),
+                                        child: Text(
+                                          profile.name.isNotEmpty ? profile.name[0] : '',
+                                          style: AppTextStyles.avatarInitials.copyWith(fontSize: 48),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 24),
+                                      Text(
+                                        profile.name,
+                                        style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600, fontSize: 20),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
                         ),
                       ),
-                    );
-                  },
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
