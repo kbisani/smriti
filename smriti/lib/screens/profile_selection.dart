@@ -87,6 +87,8 @@ class _ProfileSelectionPageState extends State<ProfileSelectionPage> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                Image.asset('assets/logo.png', width: 100, height: 100),
+                const SizedBox(height: 24),
                 Text(
                   'Welcome back, Krishna 👋',
                   style: AppTextStyles.headline.copyWith(fontSize: 36),

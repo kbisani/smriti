@@ -43,6 +43,8 @@ class _MainUserOnboardingPageState extends State<MainUserOnboardingPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              Image.asset('assets/logo.png', width: 64, height: 64),
+              const SizedBox(height: 24),
               Text(
                 'Let’s set up your account',
                 style: Theme.of(context).textTheme.headlineMedium,
