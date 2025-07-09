@@ -142,12 +142,15 @@ class _ProfileSelectionPageState extends State<ProfileSelectionPage> {
                               }
                               final profile = _profiles[index];
                               return GestureDetector(
-                                onTap: () {
-                                  Navigator.of(context).push(
+                                onTap: () async {
+                                  final result = await Navigator.of(context).push(
                                     MaterialPageRoute(
                                       builder: (_) => ProfileHomePage(profile: profile),
                                     ),
                                   );
+                                  if (result == true) {
+                                    _loadProfiles();
+                                  }
                                 },
                                 child: Card(
                                   color: AppColors.card,

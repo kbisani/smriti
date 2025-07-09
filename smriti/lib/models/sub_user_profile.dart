@@ -31,6 +31,38 @@ class SubUserProfile {
     this.archived = false,
   });
 
+  SubUserProfile copyWith({
+    String? id,
+    String? name,
+    String? initials,
+    String? relation,
+    String? profileImageUrl,
+    String? languagePreference,
+    String? bio,
+    DateTime? birthDate,
+    String? birthPlace,
+    List<String>? tags,
+    DateTime? createdAt,
+    DateTime? lastInteractionAt,
+    bool? archived,
+  }) {
+    return SubUserProfile(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      initials: initials ?? this.initials,
+      relation: relation ?? this.relation,
+      profileImageUrl: profileImageUrl ?? this.profileImageUrl,
+      languagePreference: languagePreference ?? this.languagePreference,
+      bio: bio ?? this.bio,
+      birthDate: birthDate ?? this.birthDate,
+      birthPlace: birthPlace ?? this.birthPlace,
+      tags: tags ?? this.tags,
+      createdAt: createdAt ?? this.createdAt,
+      lastInteractionAt: lastInteractionAt ?? this.lastInteractionAt,
+      archived: archived ?? this.archived,
+    );
+  }
+
   Map<String, dynamic> toJson() => {
     'id': id,
     'name': name,

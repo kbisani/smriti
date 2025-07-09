@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../models/sub_user_profile.dart';
 import '../theme.dart';
 import 'record_page.dart';
+import 'edit_profile_page.dart';
+import '../storage/sub_user_profile_storage.dart';
 
 class ProfileHomePage extends StatefulWidget {
   final SubUserProfile profile;
@@ -15,11 +17,14 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
   static const Color darkIndigo = Color(0xFF283593);
   int _selectedIndex = 0;
   late final PageController _pageController;
+  late SubUserProfile _profile;
+  bool _edited = false;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController();
+    _profile = widget.profile;
   }
 
   @override
@@ -41,6 +46,30 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
     _onNavTap(1);
   }
 
+  Future<void> _editProfile() async {
+    final result = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => EditProfilePage(profile: _profile),
+      ),
+    );
+    if (result == true) {
+      final updated = await SubUserProfileStorage().getProfiles();
+      final newProfile = updated.firstWhere((p) => p.id == _profile.id, orElse: () => _profile);
+      setState(() {
+        _profile = newProfile;
+        _edited = true;
+      });
+    }
+  }
+
+  void _handleBack() {
+    if (_edited) {
+      Navigator.of(context).pop(true);
+    } else {
+      Navigator.of(context).pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -54,12 +83,12 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
           children: [
             IconButton(
               icon: Icon(Icons.arrow_back, color: AppColors.textPrimary),
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: _handleBack,
             ),
             Expanded(
               child: Center(
                 child: Text(
-                  widget.profile.name.toUpperCase(),
+                  _profile.name.toUpperCase(),
                   style: AppTextStyles.headline.copyWith(fontSize: 24),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -67,7 +96,7 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
             ),
             IconButton(
               icon: Icon(Icons.edit, color: AppColors.textPrimary),
-              onPressed: () {/* TODO: Edit profile */},
+              onPressed: _editProfile,
             ),
           ],
         ),
