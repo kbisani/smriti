@@ -7,9 +7,14 @@ import 'screens/profile_selection.dart';
 import 'screens/main_user_onboarding_page.dart';
 import 'dart:async';
 import 'theme.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
+  print('Loaded .env: ${dotenv.env}');
+  print('API KEY: ${dotenv.env['GOOGLE_SPEECH_API_KEY']}');
+  
   await Hive.initFlutter();
   runApp(SmritiApp());
 }

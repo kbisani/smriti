@@ -1,6 +1,55 @@
 import 'package:flutter/material.dart';
 import '../theme.dart';
 import 'dart:async';
+import 'package:flutter_sound/flutter_sound.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+class GoogleSpeechToTextService {
+  static String get apiKey => dotenv.env['GOOGLE_SPEECH_API_KEY'] ?? '';
+  static String get endpoint => 'https://speech.googleapis.com/v1/speech:recognize?key=$apiKey';
+
+  Future<String> transcribe(File audioFile, {String languageCode = 'en-US'}) async {
+    final audioBytes = await audioFile.readAsBytes();
+    final audioBase64 = base64Encode(audioBytes);
+    final body = {
+      'config': {
+        'encoding': 'LINEAR16',
+        'sampleRateHertz': 16000,
+        'languageCode': languageCode,
+        'enableAutomaticPunctuation': true,
+        'model': 'latest_long',
+      },
+      'audio': {
+        'content': audioBase64,
+      },
+    };
+    final response = await http.post(
+      Uri.parse(endpoint),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data['results'] != null && data['results'].isNotEmpty) {
+        // Concatenate all transcript segments from all alternatives
+        return (data['results'] as List)
+            .map((result) => (result['alternatives'] as List)
+                .map((alt) => alt['transcript'] ?? '')
+                .join(' '))
+            .join(' ')
+            .trim();
+      } else {
+        return '[No transcription result]';
+      }
+    } else {
+      return '[Transcription failed:  ${response.statusCode}]';
+    }
+  }
+}
 
 class RecordPage extends StatefulWidget {
   final String prompt;
@@ -12,59 +61,74 @@ class RecordPage extends StatefulWidget {
 
 class _RecordPageState extends State<RecordPage> {
   bool _isRecording = false;
+  bool _isTranscribing = false;
   String _transcription = '';
-  late final List<String> _dummyWords;
-  int _dummyIndex = 0;
-  Timer? _timer;
+  String? _audioPath;
+  final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
 
   @override
   void initState() {
     super.initState();
-    _dummyWords = [
-      'This', 'is', 'a', 'live', 'transcription', 'demo.',
-      'Imagine', 'your', 'words', 'appearing', 'here', 'in', 'real', 'time!'
-    ];
+    _initRecorder();
+  }
+
+  Future<void> _initRecorder() async {
+    await _recorder.openRecorder();
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _recorder.closeRecorder();
     super.dispose();
   }
 
-  void _startRecording() {
+  Future<void> _startRecording() async {
+    final dir = await getTemporaryDirectory();
+    final filePath = '${dir.path}/recorded_audio_${DateTime.now().millisecondsSinceEpoch}.wav';
+    await _recorder.startRecorder(
+      toFile: filePath,
+      codec: Codec.pcm16WAV,
+      sampleRate: 16000,
+    );
     setState(() {
       _isRecording = true;
       _transcription = '';
-      _dummyIndex = 0;
-    });
-    _timer = Timer.periodic(const Duration(milliseconds: 400), (timer) {
-      if (_isRecording && _dummyIndex < _dummyWords.length) {
-        setState(() {
-          _transcription += (_transcription.isEmpty ? '' : ' ') + _dummyWords[_dummyIndex];
-          _dummyIndex++;
-        });
-      } else {
-        _timer?.cancel();
-      }
+      _audioPath = filePath;
     });
   }
 
-  void _stopRecording() {
+  Future<void> _stopRecording() async {
+    final path = await _recorder.stopRecorder();
     setState(() {
       _isRecording = false;
+      _audioPath = path;
     });
-    _timer?.cancel();
+    if (path != null) {
+      await _transcribeAudio(File(path));
+    }
   }
 
-  void _cancelRecording() {
+  void _cancelRecording() async {
+    await _recorder.stopRecorder();
     setState(() {
       _isRecording = false;
       _transcription = '';
-      _dummyIndex = 0;
+      _audioPath = null;
     });
-    _timer?.cancel();
     Navigator.of(context).pop();
+  }
+
+  Future<void> _transcribeAudio(File audioFile) async {
+    setState(() {
+      _isTranscribing = true;
+      _transcription = '';
+    });
+    final sttService = GoogleSpeechToTextService();
+    final result = await sttService.transcribe(audioFile, languageCode: 'en-IN');
+    setState(() {
+      _isTranscribing = false;
+      _transcription = result;
+    });
   }
 
   @override
@@ -117,11 +181,31 @@ class _RecordPageState extends State<RecordPage> {
                   borderRadius: BorderRadius.circular(16),
                 ),
                 width: double.infinity,
-                child: Text(
-                  _transcription.isEmpty ? 'Live transcription will appear here...' : _transcription,
-                  style: AppTextStyles.body.copyWith(fontSize: 16),
-                ),
+                child: _isTranscribing
+                    ? Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                          const SizedBox(width: 16),
+                          Text('Transcribing...', style: AppTextStyles.body),
+                        ],
+                      )
+                    : Text(
+                        _transcription.isEmpty
+                            ? 'Transcription will appear here...'
+                            : _transcription,
+                        style: AppTextStyles.body.copyWith(fontSize: 16),
+                      ),
               ),
+              if (_audioPath != null && !_isRecording && !_isTranscribing)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12.0),
+                  child: Text('Audio saved: $_audioPath', style: AppTextStyles.label),
+                ),
               const Spacer(),
               if (_isRecording)
                 Row(
@@ -143,4 +227,4 @@ class _RecordPageState extends State<RecordPage> {
       ),
     );
   }
-} 
+}
