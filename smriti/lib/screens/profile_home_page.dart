@@ -4,6 +4,7 @@ import '../theme.dart';
 import 'record_page.dart';
 import 'edit_profile_page.dart';
 import '../storage/sub_user_profile_storage.dart';
+import 'timeline.dart';
 
 class ProfileHomePage extends StatefulWidget {
   final SubUserProfile profile;
@@ -186,8 +187,8 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
             ),
             // Record Tab
             RecordPage(prompt: 'What was a lesson your mom taught you that you’ll always remember?'),
-            // Timeline Tab (placeholder)
-            Center(child: Text('Timeline View', style: AppTextStyles.headline)),
+            // Timeline Tab
+            TimelinePage(profile: _profile),
             // Archive Tab (placeholder)
             Center(child: Text('Archive View', style: AppTextStyles.headline)),
           ],
