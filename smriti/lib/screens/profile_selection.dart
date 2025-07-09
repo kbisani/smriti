@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '../theme.dart';
-import '../models/profile.dart';
-import '../storage/hive_profile_storage.dart';
+import '../models/sub_user_profile.dart';
+import '../storage/sub_user_profile_storage.dart';
 import 'add_profile_page.dart';
+import 'profile_home_page.dart';
 import 'dart:async';
 
 class ProfileSelectionPage extends StatefulWidget {
@@ -11,14 +12,14 @@ class ProfileSelectionPage extends StatefulWidget {
 }
 
 class _ProfileSelectionPageState extends State<ProfileSelectionPage> {
-  List<Profile> _profiles = [];
+  List<SubUserProfile> _profiles = [];
   bool _loading = true;
   final ScrollController _scrollController = ScrollController();
   Timer? _autoScrollTimer;
   bool _userInteracted = false;
 
-  static const double cardWidth = 180; // 50% larger than 120
-  static const double cardHeight = 240; // 50% larger than 160
+  static const double cardWidth = 180;
+  static const double cardHeight = 240;
 
   @override
   void initState() {
@@ -59,7 +60,7 @@ class _ProfileSelectionPageState extends State<ProfileSelectionPage> {
 
   Future<void> _loadProfiles() async {
     setState(() => _loading = true);
-    final profiles = await HiveProfileStorage().getProfiles();
+    final profiles = await SubUserProfileStorage().getProfiles();
     setState(() {
       _profiles = profiles;
       _loading = false;
@@ -87,7 +88,7 @@ class _ProfileSelectionPageState extends State<ProfileSelectionPage> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Image.asset('assets/logo.png', width: 100, height: 100),
+                Image.asset('assets/logo.png', width: 64, height: 64),
                 const SizedBox(height: 24),
                 Text(
                   'Welcome back, Krishna 👋',
@@ -140,33 +141,51 @@ class _ProfileSelectionPageState extends State<ProfileSelectionPage> {
                                 );
                               }
                               final profile = _profiles[index];
-                              return Card(
-                                color: AppColors.card,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(28),
-                                ),
-                                elevation: 6,
-                                shadowColor: AppColors.border.withOpacity(0.10),
-                                child: SizedBox(
-                                  width: cardWidth,
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      CircleAvatar(
-                                        radius: 54,
-                                        backgroundColor: AppColors.primary.withOpacity(0.08),
-                                        child: Text(
-                                          profile.name.isNotEmpty ? profile.name[0] : '',
-                                          style: AppTextStyles.avatarInitials.copyWith(fontSize: 48),
+                              return GestureDetector(
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => ProfileHomePage(profile: profile),
+                                    ),
+                                  );
+                                },
+                                child: Card(
+                                  color: AppColors.card,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(28),
+                                  ),
+                                  elevation: 6,
+                                  shadowColor: AppColors.border.withOpacity(0.10),
+                                  child: SizedBox(
+                                    width: cardWidth,
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        CircleAvatar(
+                                          radius: 54,
+                                          backgroundColor: AppColors.primary.withOpacity(0.08),
+                                          child: Text(
+                                            profile.initials.isNotEmpty ? profile.initials : '',
+                                            style: AppTextStyles.avatarInitials.copyWith(fontSize: 48),
+                                          ),
                                         ),
-                                      ),
-                                      const SizedBox(height: 24),
-                                      Text(
-                                        profile.name,
-                                        style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600, fontSize: 20),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
+                                        const SizedBox(height: 24),
+                                        Text(
+                                          profile.name,
+                                          style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600, fontSize: 20),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        if (profile.relation.isNotEmpty)
+                                          Padding(
+                                            padding: const EdgeInsets.only(top: 4.0),
+                                            child: Text(
+                                              profile.relation,
+                                              style: AppTextStyles.label,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               );

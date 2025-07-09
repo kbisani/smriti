@@ -8,6 +8,7 @@ class AppColors {
   static const Color textPrimary = Colors.black87;
   static const Color textSecondary = Colors.black54;
   static const Color border = Color(0xFFE0E0E0);
+  static const Color pageBackground = Color(0xFFF8F6FF); // Example soft pastel
 }
 
 class AppTextStyles {
