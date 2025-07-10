@@ -1,7 +1,10 @@
+// archive_page.dart
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:audioplayers/audioplayers.dart';
+import '../theme.dart';
+import 'package:path/path.dart' as p;
 
 class ArchivePage extends StatefulWidget {
   final String profileId;
@@ -27,17 +30,31 @@ class _ArchivePageState extends State<ArchivePage> {
     if (await archiveRoot.exists()) {
       final dateDirs = archiveRoot.listSync().whereType<Directory>();
       for (final dateDir in dateDirs) {
-        final promptDirs = dateDir.listSync().whereType<Directory>();
-        for (final promptDir in promptDirs) {
-          final audioFile = File('${promptDir.path}/audio.aac');
-          final transcriptFile = File('${promptDir.path}/transcript.txt');
+        final recordingDirs = dateDir.listSync().whereType<Directory>();
+        for (final recDir in recordingDirs) {
+          final audioFile = File('${recDir.path}/audio.aac');
+          final transcriptFile = File('${recDir.path}/transcript.txt');
           if (await audioFile.exists() && await transcriptFile.exists()) {
             final transcript = await transcriptFile.readAsString();
+            final folderName = p.basename(recDir.path);
+            final promptPart = folderName.contains('_')
+                ? folderName.substring(folderName.indexOf('_') + 1)
+                : folderName;
+            final cleanedPrompt = promptPart
+                .replaceAll(RegExp(r'[_-]'), ' ')
+                .replaceAll(RegExp(r'\s+'), ' ')
+                .trim()
+                .replaceFirstMapped(RegExp(r'^\w'), (m) => m.group(0)!.toUpperCase());
+
+            final promptKey = cleanedPrompt.toLowerCase();
+
             entries.add(_ArchiveEntry(
-              date: dateDir.path.split('/').last,
-              prompt: promptDir.path.split('/').last.replaceAll('-', ' '),
+              date: p.basename(dateDir.path),
+              promptKey: promptKey,
+              displayPrompt: _prettifyPrompt(cleanedPrompt),
               audioPath: audioFile.path,
               transcript: transcript,
+              folderName: folderName,
             ));
           }
         }
@@ -49,56 +66,159 @@ class _ArchivePageState extends State<ArchivePage> {
     });
   }
 
+  Future<void> _deleteEntry(_ArchiveEntry entry) async {
+    final appDir = await getApplicationDocumentsDirectory();
+    final folderPath = p.join(
+      appDir.path,
+      'archive',
+      'profile_${widget.profileId}',
+      entry.date,
+      entry.folderName,
+    );
+    final dir = Directory(folderPath);
+    if (await dir.exists()) {
+      await dir.delete(recursive: true);
+    }
+    await _loadArchive();
+  }
+
+  String _prettifyPrompt(String prompt) {
+    return prompt.split(' ').map((word) {
+      if (word.trim().isEmpty) return '';
+      return word[0].toUpperCase() + word.substring(1);
+    }).join(' ');
+  }
+
+  void _showTranscript(BuildContext context, String prompt, String transcript) {
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      backgroundColor: AppColors.card,
+      isScrollControlled: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          left: 24, right: 24, top: 24,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Transcript', style: AppTextStyles.subhead),
+            SizedBox(height: 8),
+            Text(prompt, style: AppTextStyles.label),
+            SizedBox(height: 16),
+            SingleChildScrollView(
+              child: Text(transcript, style: AppTextStyles.body.copyWith(fontSize: 16)),
+            ),
+            SizedBox(height: 24),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: Text('Close', style: AppTextStyles.label.copyWith(color: AppColors.primary)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Group entries by date only
+    final Map<String, List<_ArchiveEntry>> groupedByDate = {};
+    for (final entry in _entries) {
+      groupedByDate.putIfAbsent(entry.date, () => []).add(entry);
+    }
+    final sortedDates = groupedByDate.keys.toList()..sort((a, b) => b.compareTo(a));
+
     return Scaffold(
-      appBar: AppBar(title: Text('Archive')),
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: Text('Archive', style: AppTextStyles.headline),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        automaticallyImplyLeading: false,
+        iconTheme: IconThemeData(color: AppColors.textPrimary),
+      ),
       body: _loading
           ? Center(child: CircularProgressIndicator())
           : _entries.isEmpty
-              ? Center(child: Text('No archived recordings yet.'))
-              : ListView.builder(
-                  itemCount: _entries.length,
-                  itemBuilder: (context, idx) {
-                    final entry = _entries[idx];
-                    return Card(
-                      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: ListTile(
-                        title: Text(entry.prompt),
-                        subtitle: Text(entry.date),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: Icon(Icons.play_arrow),
-                              onPressed: () async {
-                                final player = AudioPlayer();
-                                await player.play(DeviceFileSource(entry.audioPath));
-                              },
-                            ),
-                            IconButton(
-                              icon: Icon(Icons.article),
-                              onPressed: () {
-                                showDialog(
-                                  context: context,
-                                  builder: (ctx) => AlertDialog(
-                                    title: Text('Transcript'),
-                                    content: SingleChildScrollView(child: Text(entry.transcript)),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () => Navigator.of(ctx).pop(),
-                                        child: Text('Close'),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
+              ? Center(child: Text('No archived recordings yet.', style: AppTextStyles.subhead))
+              : ListView(
+                  padding: EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+                  children: [
+                    for (final date in sortedDates) ...[
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                        child: Text(
+                          date,
+                          style: AppTextStyles.label.copyWith(fontSize: 15, color: AppColors.primary),
                         ),
                       ),
-                    );
-                  },
+                      for (final entry in groupedByDate[date]!)
+                        Card(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            side: BorderSide(color: AppColors.border, width: 1),
+                          ),
+                          margin: EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                          child: ListTile(
+                            contentPadding: EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                            title: Text(entry.displayPrompt, style: AppTextStyles.subhead),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: Icon(Icons.play_circle_fill, color: AppColors.primary, size: 32),
+                                  tooltip: 'Play Audio',
+                                  onPressed: () async {
+                                    final player = AudioPlayer();
+                                    await player.play(DeviceFileSource(entry.audioPath));
+                                  },
+                                ),
+                                IconButton(
+                                  icon: Icon(Icons.article_outlined, color: AppColors.textSecondary),
+                                  tooltip: 'View Transcript',
+                                  onPressed: () => _showTranscript(context, entry.displayPrompt, entry.transcript),
+                                ),
+                                IconButton(
+                                  icon: Icon(Icons.delete_outline, color: Colors.redAccent),
+                                  tooltip: 'Delete',
+                                  onPressed: () async {
+                                    final confirm = await showDialog<bool>(
+                                      context: context,
+                                      builder: (ctx) => AlertDialog(
+                                        title: Text('Delete Entry', style: AppTextStyles.subhead),
+                                        content: Text('Delete this recording and transcript? This cannot be undone.', style: AppTextStyles.body),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () => Navigator.of(ctx).pop(false),
+                                            child: Text('Cancel', style: AppTextStyles.label),
+                                          ),
+                                          TextButton(
+                                            onPressed: () => Navigator.of(ctx).pop(true),
+                                            child: Text('Delete', style: AppTextStyles.label.copyWith(color: Colors.redAccent)),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                    if (confirm == true) {
+                                      await _deleteEntry(entry);
+                                    }
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ]
+                  ],
                 ),
     );
   }
@@ -106,8 +226,18 @@ class _ArchivePageState extends State<ArchivePage> {
 
 class _ArchiveEntry {
   final String date;
-  final String prompt;
+  final String promptKey;
+  final String displayPrompt;
   final String audioPath;
   final String transcript;
-  _ArchiveEntry({required this.date, required this.prompt, required this.audioPath, required this.transcript});
+  final String folderName;
+
+  _ArchiveEntry({
+    required this.date,
+    required this.promptKey,
+    required this.displayPrompt,
+    required this.audioPath,
+    required this.transcript,
+    required this.folderName,
+  });
 }

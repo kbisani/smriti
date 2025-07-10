@@ -9,9 +9,9 @@ String slugify(String input) {
       .toLowerCase()
       .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
       .replaceAll(RegExp(r'-+'), '-')
-      .replaceAll(RegExp(r'^-+|-+ 0'), '')
+      .replaceAll(RegExp(r'^-+|-+\u0000'), '')
       .substring(0, input.length > 32 ? 32 : input.length)
-      .replaceAll(RegExp(r'-+ 0'), '');
+      .replaceAll(RegExp(r'-+\u0000'), '');
 }
 
 /// Saves audio, transcript, and metadata to the archive folder structure for a specific profile
@@ -26,7 +26,8 @@ Future<void> saveToArchive({
   final appDir = await getApplicationDocumentsDirectory();
   final dateStr = DateFormat('yyyy-MM-dd').format(date);
   final promptSlug = slugify(prompt);
-  final archiveDir = Directory('${appDir.path}/archive/profile_$profileId/$dateStr/$promptSlug');
+  final timestamp = DateFormat('HHmmss').format(date) + '_' + date.millisecondsSinceEpoch.toString();
+  final archiveDir = Directory('${appDir.path}/archive/profile_$profileId/$dateStr/${timestamp}_$promptSlug');
   if (!await archiveDir.exists()) {
     await archiveDir.create(recursive: true);
   }
