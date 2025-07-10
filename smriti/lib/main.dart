@@ -13,7 +13,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
   print('Loaded .env: ${dotenv.env}');
-  print('API KEY: ${dotenv.env['GOOGLE_SPEECH_API_KEY']}');
+  print('API KEY: ${dotenv.env['OPENROUTER_API_KEY']}');
   
   await Hive.initFlutter();
   runApp(SmritiApp());

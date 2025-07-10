@@ -7,53 +7,65 @@ import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http_parser/http_parser.dart';
+import '../storage/archive_utils.dart';
 
-class GoogleSpeechToTextService {
-  static String get apiKey => dotenv.env['GOOGLE_SPEECH_API_KEY'] ?? '';
-  static String get endpoint => 'https://speech.googleapis.com/v1/speech:recognize?key=$apiKey';
+class OpenAIWhisperService {
+  static String get apiKey => dotenv.env['OPENAI_API_KEY'] ?? '';
+  static String get endpoint => 'https://api.openai.com/v1/audio/transcriptions';
 
-  Future<String> transcribe(File audioFile, {String languageCode = 'en-US'}) async {
+  Future<String> transcribe(File audioFile, {String languageCode = 'en'}) async {
     final audioBytes = await audioFile.readAsBytes();
-    final audioBase64 = base64Encode(audioBytes);
-    final body = {
-      'config': {
-        'encoding': 'LINEAR16',
-        'sampleRateHertz': 16000,
-        'languageCode': languageCode,
-        'enableAutomaticPunctuation': true,
-        'model': 'latest_long',
-      },
-      'audio': {
-        'content': audioBase64,
-      },
-    };
-    final response = await http.post(
-      Uri.parse(endpoint),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(body),
+
+    // Create multipart request for file upload
+    final request = http.MultipartRequest('POST', Uri.parse(endpoint));
+
+    // Add headers
+    request.headers['Authorization'] = 'Bearer $apiKey';
+
+    // Add the audio file
+    request.files.add(
+      http.MultipartFile.fromBytes(
+        'file',
+        audioBytes,
+        filename: 'audio.wav',
+        contentType: MediaType('audio', 'wav'),
+      ),
     );
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      if (data['results'] != null && data['results'].isNotEmpty) {
-        // Concatenate all transcript segments from all alternatives
-        return (data['results'] as List)
-            .map((result) => (result['alternatives'] as List)
-                .map((alt) => alt['transcript'] ?? '')
-                .join(' '))
-            .join(' ')
-            .trim();
+
+    // Add form fields
+    request.fields['model'] = 'whisper-1';
+    request.fields['language'] = languageCode;
+    request.fields['response_format'] = 'json';
+
+    try {
+      print('Sending request to: $endpoint');
+      print('API Key: ${apiKey.isNotEmpty ? 'Present' : 'Missing'}');
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      print('Response status: ${response.statusCode}');
+      print('Response headers: ${response.headers}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['text'] ?? '[No transcription result]';
       } else {
-        return '[No transcription result]';
+        return '[Transcription failed: ${response.statusCode}] - ${response.body}';
       }
-    } else {
-      return '[Transcription failed:  ${response.statusCode}]';
+    } catch (e) {
+      print('Exception: $e');
+      return '[Transcription error: $e]';
     }
   }
 }
 
 class RecordPage extends StatefulWidget {
   final String prompt;
-  const RecordPage({required this.prompt, Key? key}) : super(key: key);
+  final String profileId;
+  const RecordPage({required this.prompt, required this.profileId, Key? key}) : super(key: key);
 
   @override
   State<RecordPage> createState() => _RecordPageState();
@@ -105,6 +117,20 @@ class _RecordPageState extends State<RecordPage> {
     });
     if (path != null) {
       await _transcribeAudio(File(path));
+      // Save to archive after transcription
+      if (_audioPath != null && _transcription.isNotEmpty) {
+        await saveToArchive(
+          audioFile: File(_audioPath!),
+          transcript: _transcription,
+          prompt: widget.prompt,
+          date: DateTime.now(),
+          profileId: widget.profileId,
+          metadata: {
+            'prompt': widget.prompt,
+            'date': DateTime.now().toIso8601String(),
+          },
+        );
+      }
     }
   }
 
@@ -123,8 +149,8 @@ class _RecordPageState extends State<RecordPage> {
       _isTranscribing = true;
       _transcription = '';
     });
-    final sttService = GoogleSpeechToTextService();
-    final result = await sttService.transcribe(audioFile, languageCode: 'en-IN');
+    final sttService = OpenAIWhisperService();
+    final result = await sttService.transcribe(audioFile, languageCode: 'en');
     setState(() {
       _isTranscribing = false;
       _transcription = result;

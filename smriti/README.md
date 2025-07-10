@@ -1,16 +1,41 @@
-# smriti
+# Smriti
 
-A new Flutter project.
+A Flutter app for voice recording and transcription using OpenAI Whisper.
 
-## Getting Started
+## Features
 
-This project is a starting point for a Flutter application.
+- Voice recording with real-time feedback
+- Speech-to-text transcription using OpenAI Whisper
+- Clean, modern UI design
+- Cross-platform support (iOS, Android, Web, Desktop)
 
-A few resources to get you started if this is your first Flutter project:
+## Setup
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+1. **Install Dependencies:**
+   ```bash
+   flutter pub get
+   ```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+2. **Configure API:**
+   - Create a `.env` file in the root directory
+   - Add your OpenRouter API key:
+   ```
+   OPENROUTER_API_KEY=your_api_key_here
+   ```
+   - Get your API key from [OpenRouter](https://openrouter.ai/keys)
+
+3. **Run the App:**
+   ```bash
+   flutter run
+   ```
+
+## API Configuration
+
+This app uses OpenAI Whisper through OpenRouter for speech-to-text transcription. See `API_SETUP.md` for detailed setup instructions.
+
+## Dependencies
+
+- Flutter Sound: Audio recording
+- HTTP: API communication
+- Flutter Dotenv: Environment variable management
+- Hive: Local data storage
