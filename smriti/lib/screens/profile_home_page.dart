@@ -6,6 +6,11 @@ import 'edit_profile_page.dart';
 import '../storage/sub_user_profile_storage.dart';
 import 'timeline.dart';
 import 'archive.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ProfileHomePage extends StatefulWidget {
   final SubUserProfile profile;
@@ -21,6 +26,9 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
   late final PageController _pageController;
   late SubUserProfile _profile;
   bool _edited = false;
+
+  String _currentPrompt = 'What was a lesson your mom taught you that you’ll always remember?';
+  bool _regenLoading = false;
 
   @override
   void initState() {
@@ -69,6 +77,77 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
       Navigator.of(context).pop(true);
     } else {
       Navigator.of(context).pop();
+    }
+  }
+
+  Future<void> _regeneratePrompt() async {
+    setState(() { _regenLoading = true; });
+    final appDir = await getApplicationDocumentsDirectory();
+    final archiveRoot = Directory('${appDir.path}/archive/profile_${_profile.id}');
+    List<String> transcripts = [];
+    if (await archiveRoot.exists()) {
+      final dateDirs = archiveRoot.listSync().whereType<Directory>();
+      for (final dateDir in dateDirs) {
+        final recordingDirs = dateDir.listSync().whereType<Directory>();
+        for (final recDir in recordingDirs) {
+          final transcriptFile = File('${recDir.path}/transcript.txt');
+          if (await transcriptFile.exists()) {
+            final transcript = await transcriptFile.readAsString();
+            if (transcript.trim().isNotEmpty) {
+              transcripts.add(transcript.trim());
+            }
+          }
+        }
+      }
+    }
+    String newPrompt;
+    if (transcripts.isNotEmpty) {
+      final story = (transcripts..shuffle()).first;
+      newPrompt = await _generateFollowupPromptWithOpenAI(story);
+    } else {
+      // Fallback: pick a random prompt from a list
+      final fallbackPrompts = [
+        'Describe a moment you felt truly proud.',
+        'What is a memory that always makes you smile?',
+        'Share a story about overcoming a challenge.',
+        'Who has had the biggest impact on your life and why?',
+        'What advice would you give your younger self?',
+      ];
+      newPrompt = (fallbackPrompts..shuffle()).first;
+    }
+    setState(() {
+      _currentPrompt = newPrompt;
+      _regenLoading = false;
+    });
+  }
+
+  Future<String> _generateFollowupPromptWithOpenAI(String story) async {
+    final apiKey = dotenv.env['OPENAI_API_KEY'] ?? '';
+    final endpoint = 'https://api.openai.com/v1/chat/completions';
+    final headers = {
+      'Authorization': 'Bearer $apiKey',
+      'Content-Type': 'application/json',
+    };
+    final body = jsonEncode({
+      'model': 'gpt-3.5-turbo',
+      'messages': [
+        {'role': 'system', 'content': 'You are a helpful assistant that generates thoughtful follow-up questions for personal stories.'},
+        {'role': 'user', 'content': 'Given this story: "$story", generate a thoughtful follow-up question to help the user reflect more deeply.'},
+      ],
+      'max_tokens': 64,
+      'temperature': 0.8,
+    });
+    try {
+      final response = await http.post(Uri.parse(endpoint), headers: headers, body: body);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final content = data['choices'][0]['message']['content'];
+        return content.trim();
+      } else {
+        return 'Share a story about a meaningful experience.';
+      }
+    } catch (e) {
+      return 'Share a story about a meaningful experience.';
     }
   }
 
@@ -128,10 +207,22 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              Text('Prompt of the Day', style: AppTextStyles.label.copyWith(fontSize: 16)),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text('Prompt of the Day', style: AppTextStyles.label.copyWith(fontSize: 16)),
+                                  IconButton(
+                                    icon: _regenLoading
+                                        ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                                        : Icon(Icons.refresh, color: AppColors.primary),
+                                    tooltip: 'Regenerate Prompt',
+                                    onPressed: _regenLoading ? null : _regeneratePrompt,
+                                  ),
+                                ],
+                              ),
                               const SizedBox(height: 16),
                               Text(
-                                'What was a lesson your mom taught you that you’ll always remember?',
+                                _currentPrompt,
                                 style: AppTextStyles.headline.copyWith(fontSize: 20, fontWeight: FontWeight.w500),
                                 textAlign: TextAlign.center,
                               ),
@@ -187,7 +278,7 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
               ),
             ),
             // Record Tab
-            RecordPage(prompt: 'What was a lesson your mom taught you that you’ll always remember?', profileId: _profile.id),
+            RecordPage(prompt: _currentPrompt, profileId: _profile.id),
             // Timeline Tab
             TimelinePage(profile: _profile),
             // Archive Tab
