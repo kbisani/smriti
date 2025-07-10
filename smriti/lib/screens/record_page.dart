@@ -109,6 +109,38 @@ class _RecordPageState extends State<RecordPage> {
     });
   }
 
+  Future<Map<String, dynamic>?> _extractMetadataWithOpenAI(String transcript) async {
+    final apiKey = dotenv.env['OPENAI_API_KEY'] ?? '';
+    final endpoint = 'https://api.openai.com/v1/chat/completions';
+    final headers = {
+      'Authorization': 'Bearer $apiKey',
+      'Content-Type': 'application/json',
+    };
+    final systemPrompt =
+        'Extract the year (if any), main categories (choose from: love, family, career, wisdom, friends, education, health, adventure, loss, growth), and a 1-sentence summary from this story. Respond ONLY in minified JSON with keys: year, categories, summary.';
+    final body = jsonEncode({
+      'model': 'gpt-3.5-turbo',
+      'messages': [
+        {'role': 'system', 'content': systemPrompt},
+        {'role': 'user', 'content': transcript},
+      ],
+      'max_tokens': 128,
+      'temperature': 0.3,
+    });
+    try {
+      final response = await http.post(Uri.parse(endpoint), headers: headers, body: body);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final content = data['choices'][0]['message']['content'];
+        // Try to parse the returned JSON
+        return jsonDecode(content);
+      }
+    } catch (e) {
+      // ignore
+    }
+    return null;
+  }
+
   Future<void> _stopRecording() async {
     final path = await _recorder.stopRecorder();
     setState(() {
@@ -117,6 +149,11 @@ class _RecordPageState extends State<RecordPage> {
     });
     if (path != null) {
       await _transcribeAudio(File(path));
+      // Extract metadata from transcript
+      Map<String, dynamic>? metadata;
+      if (_transcription.isNotEmpty) {
+        metadata = await _extractMetadataWithOpenAI(_transcription);
+      }
       // Save to archive after transcription
       if (_audioPath != null && _transcription.isNotEmpty) {
         await saveToArchive(
@@ -125,7 +162,7 @@ class _RecordPageState extends State<RecordPage> {
           prompt: widget.prompt,
           date: DateTime.now(),
           profileId: widget.profileId,
-          metadata: {
+          metadata: metadata ?? {
             'prompt': widget.prompt,
             'date': DateTime.now().toIso8601String(),
           },
