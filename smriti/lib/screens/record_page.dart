@@ -77,6 +77,9 @@ class _RecordPageState extends State<RecordPage> {
   String _transcription = '';
   String? _audioPath;
   final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
+  String _editableTranscript = '';
+  bool _isEditingTranscript = false;
+  final TextEditingController _transcriptController = TextEditingController();
 
   @override
   void initState() {
@@ -91,6 +94,7 @@ class _RecordPageState extends State<RecordPage> {
   @override
   void dispose() {
     _recorder.closeRecorder();
+    _transcriptController.dispose();
     super.dispose();
   }
 
@@ -191,6 +195,45 @@ class _RecordPageState extends State<RecordPage> {
     setState(() {
       _isTranscribing = false;
       _transcription = result;
+      _editableTranscript = result;
+      _transcriptController.text = result;
+      _isEditingTranscript = false;
+    });
+  }
+
+  Future<void> _saveReviewedTranscript() async {
+    // Extract metadata from transcript
+    Map<String, dynamic>? metadata;
+    if (_editableTranscript.isNotEmpty) {
+      metadata = await _extractMetadataWithOpenAI(_editableTranscript);
+    }
+    // Save to archive after review
+    if (_audioPath != null && _editableTranscript.isNotEmpty) {
+      await saveToArchive(
+        audioFile: File(_audioPath!),
+        transcript: _editableTranscript,
+        prompt: widget.prompt,
+        date: DateTime.now(),
+        profileId: widget.profileId,
+        metadata: metadata ?? {
+          'prompt': widget.prompt,
+          'date': DateTime.now().toIso8601String(),
+        },
+      );
+    }
+    setState(() {
+      _isEditingTranscript = false;
+      _editableTranscript = '';
+      _transcription = '';
+      _audioPath = null;
+    });
+  }
+
+  void _cancelEditTranscript() {
+    setState(() {
+      _isEditingTranscript = false;
+      _editableTranscript = _transcription;
+      _transcriptController.text = _transcription;
     });
   }
 
@@ -257,12 +300,60 @@ class _RecordPageState extends State<RecordPage> {
                           Text('Transcribing...', style: AppTextStyles.body),
                         ],
                       )
-                    : Text(
-                        _transcription.isEmpty
-                            ? 'Transcription will appear here...'
-                            : _transcription,
-                        style: AppTextStyles.body.copyWith(fontSize: 16),
-                      ),
+                    : _transcription.isEmpty
+                        ? Text('Transcription will appear here...', style: AppTextStyles.body.copyWith(fontSize: 16))
+                        : _isEditingTranscript
+                            ? Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  TextField(
+                                    controller: _transcriptController,
+                                    maxLines: 8,
+                                    minLines: 3,
+                                    onChanged: (val) => _editableTranscript = val,
+                                    decoration: InputDecoration(
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                      contentPadding: EdgeInsets.all(12),
+                                    ),
+                                  ),
+                                  SizedBox(height: 16),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      TextButton(
+                                        onPressed: _cancelEditTranscript,
+                                        child: Text('Cancel', style: AppTextStyles.label),
+                                      ),
+                                      SizedBox(width: 12),
+                                      ElevatedButton(
+                                        onPressed: _saveReviewedTranscript,
+                                        child: Text('Save'),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              )
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(_editableTranscript, style: AppTextStyles.body.copyWith(fontSize: 16)),
+                                  SizedBox(height: 16),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      ElevatedButton(
+                                        onPressed: () => setState(() => _isEditingTranscript = true),
+                                        child: Text('Edit'),
+                                      ),
+                                      SizedBox(width: 12),
+                                      ElevatedButton(
+                                        onPressed: _saveReviewedTranscript,
+                                        child: Text('Save'),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
               ),
               if (_audioPath != null && !_isRecording && !_isTranscribing)
                 Padding(

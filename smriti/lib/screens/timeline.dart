@@ -60,6 +60,15 @@ class _TimelinePageState extends State<TimelinePage> with SingleTickerProviderSt
         }
       }
     }
+    // Integrate birth event into timeline
+    final birthYear = widget.profile.birthDate?.year;
+    final birthPlace = widget.profile.birthPlace ?? 'Place?';
+    if (birthYear != null) {
+      byYear.putIfAbsent(birthYear, () => []).insert(
+        0,
+        _TimelineEntry(year: birthYear, summary: 'Born in $birthPlace'),
+      );
+    }
     return byYear;
   }
 
@@ -104,23 +113,9 @@ class _TimelinePageState extends State<TimelinePage> with SingleTickerProviderSt
                         if (byYear.isEmpty) {
                           return Center(child: Text('No stories with a year found.', style: AppTextStyles.subhead));
                         }
-                        final sortedYears = byYear.keys.toList()..sort((a, b) => b.compareTo(a));
+                        final sortedYears = byYear.keys.toList()..sort((a, b) => a.compareTo(b)); // Oldest at top
                         return ListView(
                           children: [
-                            Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-                              child: Text(birthYear, style: AppTextStyles.label.copyWith(color: AppColors.primary, fontSize: 16)),
-                            ),
-                            Card(
-                              color: AppColors.card,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                              elevation: 0,
-                              margin: EdgeInsets.symmetric(vertical: 6, horizontal: 8),
-                              child: Padding(
-                                padding: const EdgeInsets.all(16.0),
-                                child: Text('Born in $birthPlace', style: AppTextStyles.body),
-                              ),
-                            ),
                             for (final year in sortedYears) ...[
                               Padding(
                                 padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
