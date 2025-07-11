@@ -3,6 +3,8 @@ import 'package:uuid/uuid.dart';
 import '../models/sub_user_profile.dart';
 import '../storage/sub_user_profile_storage.dart';
 import '../theme.dart';
+import '../storage/archive_utils.dart';
+// REMOVE: import '../models/profile_memory.dart';
 
 class AddProfilePage extends StatefulWidget {
   @override
@@ -57,24 +59,32 @@ class _AddProfilePageState extends State<AddProfilePage> {
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSaving = true);
-    final profile = SubUserProfile(
-      id: const Uuid().v4(),
-      name: _nameController.text.trim(),
-      initials: _initialsController.text.trim(),
-      relation: _relationController.text.trim(),
-      profileImageUrl: _profileImageUrl,
-      languagePreference: _languageController.text.trim(),
-      bio: _bioController.text.trim().isEmpty ? null : _bioController.text.trim(),
-      birthDate: _birthDate,
-      birthPlace: _birthPlaceController.text.trim().isEmpty ? null : _birthPlaceController.text.trim(),
-      tags: _tags.isEmpty ? null : List<String>.from(_tags),
-      createdAt: DateTime.now(),
-      lastInteractionAt: null,
-      archived: _archived,
-    );
-    await SubUserProfileStorage().addProfile(profile);
-    setState(() => _isSaving = false);
-    if (mounted) Navigator.of(context).pop(true);
+    try {
+      final profile = SubUserProfile(
+        id: const Uuid().v4(),
+        name: _nameController.text.trim(),
+        initials: _initialsController.text.trim(),
+        relation: _relationController.text.trim(),
+        profileImageUrl: _profileImageUrl,
+        languagePreference: _languageController.text.trim(),
+        bio: _bioController.text.trim().isEmpty ? null : _bioController.text.trim(),
+        birthDate: _birthDate,
+        birthPlace: _birthPlaceController.text.trim().isEmpty ? null : _birthPlaceController.text.trim(),
+        tags: _tags.isEmpty ? null : List<String>.from(_tags),
+        createdAt: DateTime.now(),
+        lastInteractionAt: null,
+        archived: _archived,
+      );
+      await SubUserProfileStorage().addProfile(profile);
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (e, st) {
+      print('Error creating profile: $e\n$st');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to create profile. Please try again.')),
+      );
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
   @override

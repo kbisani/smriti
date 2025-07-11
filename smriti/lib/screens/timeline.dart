@@ -48,7 +48,7 @@ class _TimelinePageState extends State<TimelinePage> with SingleTickerProviderSt
             try {
               final meta = jsonDecode(await metaFile.readAsString());
               final year = meta['year'];
-              final summary = meta['summary'] ?? '';
+              final summary = meta['personalized_summary'] ?? meta['summary'] ?? '';
               if (year != null && summary.isNotEmpty) {
                 final y = int.tryParse(year.toString());
                 if (y != null) {

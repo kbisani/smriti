@@ -9,6 +9,7 @@ import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http_parser/http_parser.dart';
 import '../storage/archive_utils.dart';
+import 'package:uuid/uuid.dart';
 
 class OpenAIWhisperService {
   static String get apiKey => dotenv.env['OPENAI_API_KEY'] ?? '';
@@ -80,6 +81,8 @@ class _RecordPageState extends State<RecordPage> {
   String _editableTranscript = '';
   bool _isEditingTranscript = false;
   final TextEditingController _transcriptController = TextEditingController();
+  String? _archiveDirPath; // Track the archive directory for this recording
+  String? _recordingUuid; // Track the uuid for this recording
 
   @override
   void initState() {
@@ -160,7 +163,20 @@ class _RecordPageState extends State<RecordPage> {
       }
       // Save to archive after transcription
       if (_audioPath != null && _transcription.isNotEmpty) {
-        await saveToArchive(
+        // Generate and store uuid for this recording
+        _recordingUuid = const Uuid().v4();
+        if (metadata != null) {
+          metadata['uuid'] = _recordingUuid;
+        }
+        // Load profile memory
+        final memory = await readProfileMemory(widget.profileId);
+        // Generate personalized summary
+        String? personalizedSummary;
+        if (metadata != null) {
+          personalizedSummary = await generatePersonalizedEventSummary(eventMeta: metadata, memory: memory);
+          metadata['personalized_summary'] = personalizedSummary;
+        }
+        _archiveDirPath = await saveToArchive(
           audioFile: File(_audioPath!),
           transcript: _transcription,
           prompt: widget.prompt,
@@ -169,7 +185,14 @@ class _RecordPageState extends State<RecordPage> {
           metadata: metadata ?? {
             'prompt': widget.prompt,
             'date': DateTime.now().toIso8601String(),
+            if (_recordingUuid != null) 'uuid': _recordingUuid,
           },
+        );
+        // Update profile memory with new story
+        await updateProfileMemoryWithStory(
+          profileId: widget.profileId,
+          meta: metadata ?? {'uuid': _recordingUuid},
+          transcript: _transcription,
         );
       }
     }
@@ -209,16 +232,38 @@ class _RecordPageState extends State<RecordPage> {
     }
     // Save to archive after review
     if (_audioPath != null && _editableTranscript.isNotEmpty) {
-      await saveToArchive(
-        audioFile: File(_audioPath!),
-        transcript: _editableTranscript,
-        prompt: widget.prompt,
-        date: DateTime.now(),
+      // Ensure uuid is present in metadata
+      if (metadata != null) {
+        metadata['uuid'] = _recordingUuid;
+      }
+      // Load profile memory
+      final memory = await readProfileMemory(widget.profileId);
+      // Generate personalized summary
+      String? personalizedSummary;
+      if (metadata != null) {
+        personalizedSummary = await generatePersonalizedEventSummary(eventMeta: metadata, memory: memory);
+        metadata['personalized_summary'] = personalizedSummary;
+      }
+      if (_archiveDirPath != null) {
+        await saveToArchive(
+          audioFile: File(_audioPath!),
+          transcript: _editableTranscript,
+          prompt: widget.prompt,
+          date: DateTime.now(),
+          profileId: widget.profileId,
+          metadata: metadata ?? {
+            'prompt': widget.prompt,
+            'date': DateTime.now().toIso8601String(),
+            if (_recordingUuid != null) 'uuid': _recordingUuid,
+          },
+          archiveDirPath: _archiveDirPath,
+        );
+      }
+      // Update profile memory with reviewed transcript
+      await updateProfileMemoryWithStory(
         profileId: widget.profileId,
-        metadata: metadata ?? {
-          'prompt': widget.prompt,
-          'date': DateTime.now().toIso8601String(),
-        },
+        meta: metadata ?? {'uuid': _recordingUuid},
+        transcript: _editableTranscript,
       );
     }
     setState(() {
@@ -226,6 +271,8 @@ class _RecordPageState extends State<RecordPage> {
       _editableTranscript = '';
       _transcription = '';
       _audioPath = null;
+      _archiveDirPath = null;
+      _recordingUuid = null;
     });
   }
 

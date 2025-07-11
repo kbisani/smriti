@@ -5,6 +5,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../theme.dart';
 import 'package:path/path.dart' as p;
+import '../storage/archive_utils.dart';
+import 'dart:convert'; // Added for jsonDecode
 
 class ArchivePage extends StatefulWidget {
   final String profileId;
@@ -83,9 +85,22 @@ class _ArchivePageState extends State<ArchivePage> {
       entry.date,
       entry.folderName,
     );
+    // Read uuid from meta.json if it exists
+    final metaFile = File(p.join(folderPath, 'meta.json'));
+    String? uuid;
+    if (await metaFile.exists()) {
+      try {
+        final meta = jsonDecode(await metaFile.readAsString());
+        uuid = meta['uuid'] as String?;
+      } catch (_) {}
+    }
     final dir = Directory(folderPath);
     if (await dir.exists()) {
       await dir.delete(recursive: true);
+    }
+    // Remove event from memory.json if uuid found
+    if (uuid != null) {
+      await removeEventFromMemoryByUuid(widget.profileId, uuid);
     }
     await _loadArchive();
   }
@@ -254,6 +269,15 @@ class _ArchivePageState extends State<ArchivePage> {
                 ),
               ],
             ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          final memory = await readProfileMemory(widget.profileId);
+          print('memory.json for profile ${widget.profileId}:');
+          print(memory.toJsonString());
+        },
+        child: Icon(Icons.bug_report),
+        tooltip: 'Print memory.json to console',
+      ),
     );
   }
 }
