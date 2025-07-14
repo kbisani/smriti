@@ -7,6 +7,8 @@ import 'profile_home_page.dart';
 import 'dart:async';
 
 class ProfileSelectionPage extends StatefulWidget {
+  const ProfileSelectionPage({Key? key}) : super(key: key);
+
   @override
   State<ProfileSelectionPage> createState() => _ProfileSelectionPageState();
 }
@@ -91,7 +93,7 @@ class _ProfileSelectionPageState extends State<ProfileSelectionPage> {
                 Image.asset('assets/logo.png', width: 64, height: 64),
                 const SizedBox(height: 24),
                 Text(
-                  'Welcome back, Krishna 👋',
+                  'Welcome back 👋',
                   style: AppTextStyles.headline.copyWith(fontSize: 36),
                   textAlign: TextAlign.center,
                 ),
@@ -109,7 +111,6 @@ class _ProfileSelectionPageState extends State<ProfileSelectionPage> {
                             separatorBuilder: (_, __) => const SizedBox(width: 36),
                             itemBuilder: (context, index) {
                               if (index == _profiles.length) {
-                                // Add Profile Card
                                 return GestureDetector(
                                   onTap: _addProfile,
                                   child: Card(

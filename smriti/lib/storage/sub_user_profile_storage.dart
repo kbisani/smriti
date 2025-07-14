@@ -5,14 +5,18 @@ class SubUserProfileStorage {
   static const String boxName = 'sub_user_profiles';
 
   Future<Box> _getBox() async {
-    if (!Hive.isBoxOpen(boxName)) {
-      return await Hive.openBox(boxName);
+    if (Hive.isBoxOpen(boxName)) {
+      print('[SubUserProfileStorage] Closing box before reopening: $boxName');
+      await Hive.box(boxName).close();
     }
-    return Hive.box(boxName);
+    print('[SubUserProfileStorage] Opening box: $boxName');
+    return await Hive.openBox(boxName);
   }
 
   Future<List<SubUserProfile>> getProfiles() async {
+    print('[SubUserProfileStorage] getProfiles called');
     final box = await _getBox();
+    print('[SubUserProfileStorage] Box values: ' + box.values.toString());
     return box.values
         .map((e) => SubUserProfile.fromJson(Map<String, dynamic>.from(e)))
         .toList();
