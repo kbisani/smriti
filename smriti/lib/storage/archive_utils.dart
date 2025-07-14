@@ -183,9 +183,10 @@ Future<String> generatePersonalizedEventSummary({
   };
   final systemPrompt =
       """
+NEVER use variables or placeholders (like [person's name], [spouse's name], [partner's name], etc.) in the summary. If you do not know the real name, OMIT the name entirely and write the summary as if the name is not known. Do NOT use brackets or generic terms. Write the summary naturally without any placeholder or variable.
+
 Given the following event metadata and the person's memory (as JSON), write a 1-2 sentence summary of the event that is personalized and context-aware. 
-- Use the person's actual name and relationships from the memory if available, instead of generic terms like 'the speaker' or placeholders like [spouse's name] or [partner's name].
-- Never use variables or placeholders in the summary; use real names if available, or omit them if not.
+- Use the person's actual name and relationships from the memory if available.
 - Do not invent facts.
 Respond with only the summary text.
 """;

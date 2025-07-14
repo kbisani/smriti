@@ -124,7 +124,7 @@ class _RecordPageState extends State<RecordPage> {
       'Content-Type': 'application/json',
     };
     final systemPrompt =
-        'Extract the year (if any), main categories (choose from: love, family, career, wisdom, friends, education, health, adventure, loss, growth), and a 1-sentence summary from this story. Respond ONLY in minified JSON with keys: year, categories, summary.';
+        'Extract the year (if any), main categories (choose from: love, family, career, wisdom, friends, education, health, adventure, loss, growth), and a 1-sentence summary no longer than 20 words from this story. Respond ONLY in minified JSON with keys: year, categories, summary.';
     final body = jsonEncode({
       'model': 'gpt-3.5-turbo',
       'messages': [

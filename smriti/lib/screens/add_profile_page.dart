@@ -7,7 +7,9 @@ import '../storage/archive_utils.dart';
 import '../models/main_user.dart';
 import '../storage/main_user_storage.dart';
 import 'profile_selection.dart';
-// REMOVE: import '../models/profile_memory.dart';
+import '../models/profile_memory.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 
 class AddProfilePage extends StatefulWidget {
   final bool isMainUser;
@@ -83,6 +85,15 @@ class _AddProfilePageState extends State<AddProfilePage> {
         archived: _archived,
       );
       await SubUserProfileStorage().addProfile(profile);
+      // Ensure profile archive directory exists before writing memory.json
+      final appDir = await getApplicationDocumentsDirectory();
+      final profileDir = Directory('${appDir.path}/archive/profile_$id');
+      if (!await profileDir.exists()) {
+        await profileDir.create(recursive: true);
+      }
+      // Write initial memory.json with name
+      final memory = ProfileMemory(name: profile.name);
+      await writeProfileMemory(profile.id, memory);
       if (widget.isMainUser) {
         // Save as MainUser as well
         final mainUser = MainUser(

@@ -90,7 +90,7 @@ class _ProfileSelectionPageState extends State<ProfileSelectionPage> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Image.asset('assets/logo.png', width: 64, height: 64),
+                Image.asset('assets/logo.png', width: 80, height: 80),
                 const SizedBox(height: 24),
                 Text(
                   'Welcome back 👋',
