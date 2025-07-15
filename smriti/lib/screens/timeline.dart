@@ -5,6 +5,14 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'dart:convert';
 
+class _MosaicStory {
+  final String summary;
+  final int? year;
+  final List<String> categories;
+  final String? personalizedSummary;
+  _MosaicStory({required this.summary, this.year, required this.categories, this.personalizedSummary});
+}
+
 class _TimelineEntry {
   final int year;
   final String summary;
@@ -21,6 +29,10 @@ class TimelinePage extends StatefulWidget {
 
 class _TimelinePageState extends State<TimelinePage> with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+
+  static const List<String> _predefinedCategories = [
+    'love', 'family', 'career', 'wisdom', 'friends', 'education', 'health', 'adventure', 'loss', 'growth'
+  ];
 
   @override
   void initState() {
@@ -70,6 +82,45 @@ class _TimelinePageState extends State<TimelinePage> with SingleTickerProviderSt
       );
     }
     return byYear;
+  }
+
+  Future<Map<String, List<_MosaicStory>>> _loadMosaicStories() async {
+    final appDir = await getApplicationDocumentsDirectory();
+    final archiveRoot = Directory('${appDir.path}/archive/profile_${widget.profile.id}');
+    Map<String, List<_MosaicStory>> byCategory = { for (var c in _predefinedCategories) c: [] };
+    if (await archiveRoot.exists()) {
+      final dateDirs = archiveRoot.listSync().whereType<Directory>();
+      for (final dateDir in dateDirs) {
+        final recordingDirs = dateDir.listSync().whereType<Directory>();
+        for (final recDir in recordingDirs) {
+          final metaFile = File('${recDir.path}/meta.json');
+          if (await metaFile.exists()) {
+            try {
+              final meta = jsonDecode(await metaFile.readAsString());
+              final summary = meta['personalized_summary'] ?? meta['summary'] ?? '';
+              final year = meta['year'];
+              final categories = (meta['categories'] is List)
+                ? (meta['categories'] as List<dynamic>).map((e) => e.toString()).toList()
+                : (meta['categories'] is String ? [meta['categories']] : <String>[]);
+              if (summary.isNotEmpty && categories.isNotEmpty) {
+                final story = _MosaicStory(
+                  summary: summary,
+                  year: year != null ? int.tryParse(year.toString()) : null,
+                  categories: categories.cast<String>(),
+                  personalizedSummary: meta['personalized_summary'],
+                );
+                for (final cat in categories) {
+                  if (byCategory.containsKey(cat)) {
+                    byCategory[cat]!.add(story);
+                  }
+                }
+              }
+            } catch (_) {}
+          }
+        }
+      }
+    }
+    return byCategory;
   }
 
   @override
@@ -142,8 +193,66 @@ class _TimelinePageState extends State<TimelinePage> with SingleTickerProviderSt
                       child: Text('Graph View (coming soon)', style: AppTextStyles.body),
                     ),
                     // Mosaic Tab
-                    Center(
-                      child: Text('Mosaic View (stories by category, coming soon)', style: AppTextStyles.body),
+                    FutureBuilder<Map<String, List<_MosaicStory>>>(
+                      future: _loadMosaicStories(),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) {
+                          return Center(child: CircularProgressIndicator());
+                        }
+                        final byCategory = snapshot.data!;
+                        final categoriesWithStories = _predefinedCategories.where((cat) => byCategory[cat]!.isNotEmpty).toList();
+                        if (categoriesWithStories.isEmpty) {
+                          return Center(child: Text('No stories with categories found.', style: AppTextStyles.subhead));
+                        }
+                        return GridView.builder(
+                          itemCount: categoriesWithStories.length,
+                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 16,
+                            mainAxisSpacing: 16,
+                            childAspectRatio: 1.1,
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+                          itemBuilder: (context, idx) {
+                            final cat = categoriesWithStories[idx];
+                            final stories = byCategory[cat]!;
+                            return GestureDetector(
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => CategoryStoriesPage(category: cat, stories: stories),
+                                  ),
+                                );
+                              },
+                              child: Card(
+                                color: AppColors.card,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                elevation: 2,
+                                shadowColor: AppColors.border.withOpacity(0.18),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(18.0),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        cat[0].toUpperCase() + cat.substring(1),
+                                        style: AppTextStyles.label.copyWith(fontSize: 20, fontFamily: 'Serif', color: AppColors.primary),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      const SizedBox(height: 12),
+                                      Text(
+                                        '${stories.length} stor${stories.length == 1 ? 'y' : 'ies'}',
+                                        style: AppTextStyles.body.copyWith(fontSize: 14, color: AppColors.textSecondary),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -151,6 +260,71 @@ class _TimelinePageState extends State<TimelinePage> with SingleTickerProviderSt
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+// Add this new page for category stories
+class CategoryStoriesPage extends StatelessWidget {
+  final String category;
+  final List<_MosaicStory> stories;
+  const CategoryStoriesPage({required this.category, required this.stories, Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: IconThemeData(color: AppColors.primary),
+        title: Text(
+          category[0].toUpperCase() + category.substring(1),
+          style: AppTextStyles.headline.copyWith(fontSize: 22, color: AppColors.primary, fontFamily: 'Serif'),
+        ),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: stories.isEmpty
+            ? Center(child: Text('No stories found.', style: AppTextStyles.subhead))
+            : GridView.builder(
+                itemCount: stories.length,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 1,
+                ),
+                itemBuilder: (context, idx) {
+                  final story = stories[idx];
+                  return Card(
+                    color: AppColors.card,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 2,
+                    shadowColor: AppColors.border.withOpacity(0.2),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (story.year != null)
+                            Text(story.year.toString(), style: AppTextStyles.label.copyWith(fontSize: 12, color: AppColors.textSecondary)),
+                          const SizedBox(height: 6),
+                          Expanded(
+                            child: Text(
+                              story.summary,
+                              style: AppTextStyles.body,
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
       ),
     );
   }
