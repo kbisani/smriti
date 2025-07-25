@@ -4,13 +4,11 @@ import '../theme.dart';
 import 'record_page.dart';
 import 'edit_profile_page.dart';
 import '../storage/sub_user_profile_storage.dart';
+import '../storage/qdrant_profile_service.dart';
+import '../storage/prompt_generation_service.dart';
+import '../storage/story_continuation_service.dart';
 import 'timeline.dart';
 import 'archive.dart';
-import 'dart:io';
-import 'package:path_provider/path_provider.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ProfileHomePage extends StatefulWidget {
   final SubUserProfile profile;
@@ -27,14 +25,26 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
   late SubUserProfile _profile;
   bool _edited = false;
 
-  String _currentPrompt = 'What was a lesson your mom taught you that you’ll always remember?';
+  String _currentPrompt = 'What was a lesson your mom taught you that you\'ll always remember?';
   bool _regenLoading = false;
+  
+  late final QdrantProfileService _profileService;
+  late final PromptGenerationService _promptService;
+  late final StoryContinuationService _continuationService;
+  
+  List<String> _usedPrompts = [];
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController();
     _profile = widget.profile;
+    
+    _profileService = QdrantProfileService();
+    _promptService = PromptGenerationService(_profileService);
+    _continuationService = StoryContinuationService(_profileService);
+    
+    _loadInitialPrompt();
   }
 
   @override
@@ -80,74 +90,234 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
     }
   }
 
-  Future<void> _regeneratePrompt() async {
-    setState(() { _regenLoading = true; });
-    final appDir = await getApplicationDocumentsDirectory();
-    final archiveRoot = Directory('${appDir.path}/archive/profile_${_profile.id}');
-    List<String> transcripts = [];
-    if (await archiveRoot.exists()) {
-      final dateDirs = archiveRoot.listSync().whereType<Directory>();
-      for (final dateDir in dateDirs) {
-        final recordingDirs = dateDir.listSync().whereType<Directory>();
-        for (final recDir in recordingDirs) {
-          final transcriptFile = File('${recDir.path}/transcript.txt');
-          if (await transcriptFile.exists()) {
-            final transcript = await transcriptFile.readAsString();
-            if (transcript.trim().isNotEmpty) {
-              transcripts.add(transcript.trim());
-            }
-          }
-        }
+  Future<void> _loadInitialPrompt() async {
+    try {
+      final recordings = await _profileService.getAllRecordings(_profile.id);
+      
+      String initialPrompt;
+      if (recordings.isEmpty) {
+        // First time user - use a welcoming prompt
+        initialPrompt = "Let's start with something meaningful. Tell me about a moment from your childhood that still makes you smile.";
+      } else {
+        // Always generate diverse prompts for new stories (not follow-ups)
+        initialPrompt = await _promptService.generateDiversePrompt(
+          profileId: _profile.id,
+          usedCategories: _getUsedCategories(recordings),
+        );
       }
+      
+      setState(() {
+        _currentPrompt = initialPrompt;
+        _usedPrompts.add(initialPrompt);
+      });
+    } catch (e) {
+      print('Error loading initial prompt: $e');
+      // Keep default prompt
     }
-    String newPrompt;
-    if (transcripts.isNotEmpty) {
-      final story = (transcripts..shuffle()).first;
-      newPrompt = await _generateFollowupPromptWithOpenAI(story);
-    } else {
-      // Fallback: pick a random prompt from a list
-      final fallbackPrompts = [
-        'Describe a moment you felt truly proud.',
-        'What is a memory that always makes you smile?',
-        'Share a story about overcoming a challenge.',
-        'Who has had the biggest impact on your life and why?',
-        'What advice would you give your younger self?',
-      ];
-      newPrompt = (fallbackPrompts..shuffle()).first;
-    }
-    setState(() {
-      _currentPrompt = newPrompt;
-      _regenLoading = false;
-    });
   }
 
-  Future<String> _generateFollowupPromptWithOpenAI(String story) async {
-    final apiKey = dotenv.env['OPENAI_API_KEY'] ?? '';
-    final endpoint = 'https://api.openai.com/v1/chat/completions';
-    final headers = {
-      'Authorization': 'Bearer $apiKey',
-      'Content-Type': 'application/json',
-    };
-    final body = jsonEncode({
-      'model': 'gpt-3.5-turbo',
-      'messages': [
-        {'role': 'system', 'content': 'You are a helpful assistant that generates thoughtful follow-up questions for personal stories.'},
-        {'role': 'user', 'content': 'Given this story: "$story", generate a thoughtful follow-up question to help the user reflect more deeply.'},
-      ],
-      'max_tokens': 64,
-      'temperature': 0.8,
-    });
+  Future<void> _regeneratePrompt() async {
+    setState(() { _regenLoading = true; });
+    
     try {
-      final response = await http.post(Uri.parse(endpoint), headers: headers, body: body);
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final content = data['choices'][0]['message']['content'];
-        return content.trim();
-      } else {
-        return 'Share a story about a meaningful experience.';
-      }
+      final recordings = await _profileService.getAllRecordings(_profile.id);
+      String newPrompt;
+      
+      // Always generate diverse prompts for new stories from the main prompt
+      newPrompt = await _promptService.generateDiversePrompt(
+        profileId: _profile.id,
+        usedCategories: _getUsedCategories(recordings),
+      );
+      
+      setState(() {
+        _currentPrompt = newPrompt;
+        _usedPrompts.add(newPrompt);
+        _regenLoading = false;
+      });
     } catch (e) {
-      return 'Share a story about a meaningful experience.';
+      print('Error regenerating prompt: $e');
+      setState(() {
+        _regenLoading = false;
+      });
+    }
+  }
+  
+  List<String> _getUsedCategories(List<Map<String, dynamic>> recordings) {
+    final categories = <String>{};
+    for (final recording in recordings) {
+      final recordingCategories = recording['categories'] as List<dynamic>? ?? [];
+      categories.addAll(recordingCategories.cast<String>());
+    }
+    return categories.toList();
+  }
+
+  Widget _buildStoryContinuationSection() {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _continuationService.findExpandableStories(_profile.id),
+      builder: (context, snapshot) {
+        print('DEBUG: Story continuation snapshot state: ${snapshot.connectionState}');
+        
+        if (snapshot.hasError) {
+          print('DEBUG: Error loading expandable stories: ${snapshot.error}');
+          return const SizedBox.shrink();
+        }
+        
+        if (!snapshot.hasData) {
+          return const SizedBox.shrink();
+        }
+        
+        final expandableStories = snapshot.data!;
+        print('DEBUG: Found ${expandableStories.length} expandable stories');
+        
+        if (expandableStories.isEmpty) {
+          print('DEBUG: No expandable stories available');
+          return const SizedBox.shrink();
+        }
+
+        final limitedStories = expandableStories.take(3).toList(); // Show top 3
+        print('DEBUG: Showing ${limitedStories.length} expandable stories');
+
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          child: Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            color: Colors.white,
+            elevation: 0,
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.auto_stories, color: AppColors.primary),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Continue a Story',
+                        style: AppTextStyles.label.copyWith(fontSize: 16),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Add more details to an existing story with a follow-up prompt:',
+                    style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 16),
+                  ...limitedStories.map((story) => _buildStoryTile(story)),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildStoryTile(Map<String, dynamic> story) {
+    final summary = story['personalized_summary'] ?? story['summary'] ?? '';
+    final prompt = story['prompt'] ?? '';
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(12),
+        tileColor: AppColors.card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: Text(
+          prompt.length > 50 ? '${prompt.substring(0, 50)}...' : prompt,
+          style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w500),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        subtitle: summary.isNotEmpty
+            ? Text(
+                summary.length > 80 ? '${summary.substring(0, 80)}...' : summary,
+                style: AppTextStyles.label.copyWith(color: AppColors.textSecondary),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              )
+            : null,
+        trailing: Icon(Icons.add_circle_outline, color: AppColors.primary),
+        onTap: () => _continueStory(story),
+      ),
+    );
+  }
+
+  Future<void> _continueStory(Map<String, dynamic> story) async {
+    try {
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+
+      print('DEBUG: Generating continuation prompt for story: ${story['uuid']}');
+      print('DEBUG: Story data: ${story.toString()}');
+
+      // Generate a continuation prompt for this specific story
+      final continuationPrompt = await _promptService.generateContinuationPrompt(
+        profileId: _profile.id,
+        existingStory: story,
+      );
+
+      print('DEBUG: Generated continuation prompt: $continuationPrompt');
+
+      // Hide loading dialog
+      Navigator.of(context).pop();
+
+      // Navigate to record page with the continuation prompt
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => RecordPage(
+            prompt: continuationPrompt,
+            profileId: _profile.id,
+            isStoryContinuation: true,
+            originalStoryUuid: story['uuid'],
+          ),
+        ),
+      );
+    } catch (e) {
+      // Hide loading dialog if still showing
+      Navigator.of(context).pop();
+      
+      print('Error generating continuation prompt: $e');
+      
+      // Show fallback prompt with story context
+      final fallbackPrompt = _generateFallbackContinuationPrompt(story);
+      
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => RecordPage(
+            prompt: fallbackPrompt,
+            profileId: _profile.id,
+            isStoryContinuation: true,
+            originalStoryUuid: story['uuid'],
+          ),
+        ),
+      );
+    }
+  }
+
+  String _generateFallbackContinuationPrompt(Map<String, dynamic> story) {
+    final transcript = story['transcript'] ?? '';
+    final originalPrompt = story['prompt'] ?? '';
+    final summary = story['personalized_summary'] ?? story['summary'] ?? '';
+    
+    // Use the actual transcript first - it's most specific
+    if (transcript.isNotEmpty) {
+      final firstSentence = transcript.split('.').first.trim();
+      return "You mentioned: \"$firstSentence\". Can you tell me more details about that experience? What else do you remember about it?";
+    } else if (originalPrompt.isNotEmpty) {
+      return "Tell me more about $originalPrompt. What other details do you remember about that experience?";
+    } else if (summary.isNotEmpty) {
+      final summaryWords = summary.split(' ').take(8).join(' ');
+      return "Earlier you shared: \"$summaryWords...\". Can you tell me more details about that story?";
+    } else {
+      return "Tell me more details about that story you shared earlier.";
     }
   }
 
@@ -210,12 +380,19 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text('Prompt of the Day', style: AppTextStyles.label.copyWith(fontSize: 16)),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text('Start a New Story', style: AppTextStyles.label.copyWith(fontSize: 16)),
+                                      Text('Explore a new memory or experience', 
+                                           style: AppTextStyles.body.copyWith(fontSize: 12, color: AppColors.textSecondary)),
+                                    ],
+                                  ),
                                   IconButton(
                                     icon: _regenLoading
                                         ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                                         : Icon(Icons.refresh, color: AppColors.primary),
-                                    tooltip: 'Regenerate Prompt',
+                                    tooltip: 'Generate New Prompt',
                                     onPressed: _regenLoading ? null : _regeneratePrompt,
                                   ),
                                 ],
@@ -229,7 +406,7 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
                               const SizedBox(height: 24),
                               ElevatedButton.icon(
                                 icon: Icon(Icons.mic),
-                                label: Text('Record your response'),
+                                label: Text('Start Recording'),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: darkIndigo,
                                   foregroundColor: Colors.white,
@@ -246,33 +423,7 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
                       ),
                     ),
                     const SizedBox(height: 32),
-                    ElevatedButton.icon(
-                      icon: Icon(Icons.photo, color: AppColors.textPrimary),
-                      label: Text('Catalogue Old Photos', style: AppTextStyles.body),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: AppColors.textPrimary,
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: AppColors.border)),
-                        textStyle: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600),
-                      ),
-                      onPressed: () {/* TODO: Catalogue photos */},
-                    ),
-                    const SizedBox(height: 24),
-                    ElevatedButton.icon(
-                      icon: Icon(Icons.chat_bubble_outline),
-                      label: Text('Free Conversation'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: darkIndigo,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        textStyle: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600),
-                      ),
-                      onPressed: () {/* TODO: Free conversation */},
-                    ),
+                    _buildStoryContinuationSection(),
                   ],
                 ),
               ),

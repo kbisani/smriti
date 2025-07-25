@@ -8,8 +8,13 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http_parser/http_parser.dart';
-import '../storage/archive_utils.dart';
+import '../storage/qdrant_profile_service.dart';
+import '../storage/embedding_service.dart';
+import '../storage/story_continuation_service.dart';
 import 'package:uuid/uuid.dart';
+import '../storage/qdrant_service.dart';
+
+// Use EmbeddingService.generateEmbedding instead
 
 class OpenAIWhisperService {
   static String get apiKey => dotenv.env['OPENAI_API_KEY'] ?? '';
@@ -66,7 +71,16 @@ class OpenAIWhisperService {
 class RecordPage extends StatefulWidget {
   final String prompt;
   final String profileId;
-  const RecordPage({required this.prompt, required this.profileId, Key? key}) : super(key: key);
+  final bool isStoryContinuation;
+  final String? originalStoryUuid;
+  
+  const RecordPage({
+    required this.prompt, 
+    required this.profileId, 
+    this.isStoryContinuation = false,
+    this.originalStoryUuid,
+    Key? key
+  }) : super(key: key);
 
   @override
   State<RecordPage> createState() => _RecordPageState();
@@ -83,10 +97,14 @@ class _RecordPageState extends State<RecordPage> {
   final TextEditingController _transcriptController = TextEditingController();
   String? _archiveDirPath; // Track the archive directory for this recording
   String? _recordingUuid; // Track the uuid for this recording
+  late final QdrantProfileService _profileService;
+  late final StoryContinuationService _continuationService;
 
   @override
   void initState() {
     super.initState();
+    _profileService = QdrantProfileService();
+    _continuationService = StoryContinuationService(_profileService);
     _initRecorder();
   }
 
@@ -156,45 +174,9 @@ class _RecordPageState extends State<RecordPage> {
     });
     if (path != null) {
       await _transcribeAudio(File(path));
-      // Extract metadata from transcript
-      Map<String, dynamic>? metadata;
-      if (_transcription.isNotEmpty) {
-        metadata = await _extractMetadataWithOpenAI(_transcription);
-      }
-      // Save to archive after transcription
-      if (_audioPath != null && _transcription.isNotEmpty) {
-        // Generate and store uuid for this recording
-        _recordingUuid = const Uuid().v4();
-        if (metadata != null) {
-          metadata['uuid'] = _recordingUuid;
-        }
-        // Load profile memory
-        final memory = await readProfileMemory(widget.profileId);
-        // Generate personalized summary
-        String? personalizedSummary;
-        if (metadata != null) {
-          personalizedSummary = await generatePersonalizedEventSummary(eventMeta: metadata, memory: memory);
-          metadata['personalized_summary'] = personalizedSummary;
-        }
-        _archiveDirPath = await saveToArchive(
-          audioFile: File(_audioPath!),
-          transcript: _transcription,
-          prompt: widget.prompt,
-          date: DateTime.now(),
-          profileId: widget.profileId,
-          metadata: metadata ?? {
-            'prompt': widget.prompt,
-            'date': DateTime.now().toIso8601String(),
-            if (_recordingUuid != null) 'uuid': _recordingUuid,
-          },
-        );
-        // Update profile memory with new story
-        await updateProfileMemoryWithStory(
-          profileId: widget.profileId,
-          meta: metadata ?? {'uuid': _recordingUuid},
-          transcript: _transcription,
-        );
-      }
+      // Generate UUID for this recording
+      _recordingUuid = const Uuid().v4();
+      // NOTE: Do not save to database here - wait for user to review transcript
     }
   }
 
@@ -230,42 +212,49 @@ class _RecordPageState extends State<RecordPage> {
     if (_editableTranscript.isNotEmpty) {
       metadata = await _extractMetadataWithOpenAI(_editableTranscript);
     }
+    
     // Save to archive after review
     if (_audioPath != null && _editableTranscript.isNotEmpty) {
       // Ensure uuid is present in metadata
       if (metadata != null) {
         metadata['uuid'] = _recordingUuid;
       }
-      // Load profile memory
-      final memory = await readProfileMemory(widget.profileId);
-      // Generate personalized summary
-      String? personalizedSummary;
-      if (metadata != null) {
-        personalizedSummary = await generatePersonalizedEventSummary(eventMeta: metadata, memory: memory);
-        metadata['personalized_summary'] = personalizedSummary;
-      }
-      if (_archiveDirPath != null) {
-        await saveToArchive(
-          audioFile: File(_audioPath!),
-          transcript: _editableTranscript,
-          prompt: widget.prompt,
-          date: DateTime.now(),
+      
+      // Handle story continuation vs new story for reviewed transcript
+      if (widget.isStoryContinuation && widget.originalStoryUuid != null) {
+        // This is a continuation of an existing story
+        await _continuationService.appendToStory(
           profileId: widget.profileId,
-          metadata: metadata ?? {
-            'prompt': widget.prompt,
-            'date': DateTime.now().toIso8601String(),
-            if (_recordingUuid != null) 'uuid': _recordingUuid,
-          },
-          archiveDirPath: _archiveDirPath,
+          originalStoryUuid: widget.originalStoryUuid!,
+          continuationTranscript: _editableTranscript,
+          continuationPrompt: widget.prompt,
+          continuationMetadata: metadata,
+        );
+      } else {
+        // This is a new story
+        // Ensure prompt and essential fields are always included
+        final fullMetadata = {
+          'prompt': widget.prompt,
+          'date': DateTime.now().toIso8601String(),
+          'uuid': _recordingUuid,
+          if (metadata != null) ...metadata, // Merge OpenAI extracted metadata
+        };
+        
+        await _profileService.updateProfileMemoryWithStory(
+          profileId: widget.profileId,
+          metadata: fullMetadata,
+          transcript: _editableTranscript,
         );
       }
-      // Update profile memory with reviewed transcript
-      await updateProfileMemoryWithStory(
+      
+      // Save audio file to local storage
+      _archiveDirPath = await _profileService.saveAudioToArchive(
+        audioFile: File(_audioPath!),
         profileId: widget.profileId,
-        meta: metadata ?? {'uuid': _recordingUuid},
-        transcript: _editableTranscript,
+        recordingId: _recordingUuid ?? const Uuid().v4(),
       );
     }
+    
     setState(() {
       _isEditingTranscript = false;
       _editableTranscript = '';
@@ -288,13 +277,26 @@ class _RecordPageState extends State<RecordPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: widget.isStoryContinuation ? AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: AppColors.textPrimary),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(
+          'Continue Story',
+          style: AppTextStyles.headline.copyWith(fontSize: 18),
+        ),
+        centerTitle: true,
+      ) : null,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const SizedBox(height: 32),
+              SizedBox(height: widget.isStoryContinuation ? 16 : 32),
               Text(
                 widget.prompt,
                 style: AppTextStyles.body.copyWith(fontSize: 18, fontWeight: FontWeight.w500),

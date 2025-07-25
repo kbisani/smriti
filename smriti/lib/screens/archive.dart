@@ -5,7 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../theme.dart';
 import 'package:path/path.dart' as p;
-import '../storage/archive_utils.dart';
+import '../storage/qdrant_profile_service.dart';
 import 'dart:convert'; // Added for jsonDecode
 
 class ArchivePage extends StatefulWidget {
@@ -20,10 +20,12 @@ class _ArchivePageState extends State<ArchivePage> {
   bool _loading = true;
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
+  late final QdrantProfileService _profileService;
 
   @override
   void initState() {
     super.initState();
+    _profileService = QdrantProfileService();
     _loadArchive();
   }
 
@@ -34,75 +36,95 @@ class _ArchivePageState extends State<ArchivePage> {
   }
 
   Future<void> _loadArchive() async {
-    final appDir = await getApplicationDocumentsDirectory();
-    final archiveRoot = Directory('${appDir.path}/archive/profile_${widget.profileId}');
-    List<_ArchiveEntry> entries = [];
-    if (await archiveRoot.exists()) {
-      final dateDirs = archiveRoot.listSync().whereType<Directory>();
-      for (final dateDir in dateDirs) {
-        final recordingDirs = dateDir.listSync().whereType<Directory>();
-        for (final recDir in recordingDirs) {
-          final audioFile = File('${recDir.path}/audio.aac');
-          final transcriptFile = File('${recDir.path}/transcript.txt');
-          if (await audioFile.exists() && await transcriptFile.exists()) {
-            final transcript = await transcriptFile.readAsString();
-            final folderName = p.basename(recDir.path);
-            final promptPart = folderName.contains('_')
-                ? folderName.substring(folderName.indexOf('_') + 1)
-                : folderName;
-            final cleanedPrompt = promptPart
-                .replaceAll(RegExp(r'[_-]'), ' ')
-                .replaceAll(RegExp(r'\s+'), ' ')
-                .trim()
-                .replaceFirstMapped(RegExp(r'^\w'), (m) => m.group(0)!.toUpperCase());
+    try {
+      final recordings = await _profileService.getAllRecordings(widget.profileId);
+      List<_ArchiveEntry> entries = [];
+      
+      for (final recording in recordings) {
+        final dateStr = recording['date'] ?? '';
+        final prompt = recording['prompt'] ?? '';
+        final audioPath = recording['audio_path'];
+        final transcript = recording['transcript'] ?? '';
+        final uuid = recording['uuid'] ?? '';
+        
+        print('DEBUG Archive: Recording data: prompt="$prompt", transcript length=${transcript.length}, uuid=$uuid');
+        
+        if (transcript.isNotEmpty) {
+          // Format the date for display
+          final date = DateTime.tryParse(dateStr);
+          final displayDate = date != null 
+            ? '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}'
+            : dateStr;
+          
+          final cleanedPrompt = _prettifyPrompt(prompt);
+          final promptKey = cleanedPrompt.toLowerCase();
 
-            final promptKey = cleanedPrompt.toLowerCase();
-
-            entries.add(_ArchiveEntry(
-              date: p.basename(dateDir.path),
-              promptKey: promptKey,
-              displayPrompt: _prettifyPrompt(cleanedPrompt),
-              audioPath: audioFile.path,
-              transcript: transcript,
-              folderName: folderName,
-            ));
-          }
+          entries.add(_ArchiveEntry(
+            date: displayDate,
+            promptKey: promptKey,
+            displayPrompt: cleanedPrompt,
+            audioPath: audioPath ?? '',
+            transcript: transcript,
+            folderName: uuid, // Use UUID as folder identifier
+            uuid: uuid,
+            summary: recording['summary'],
+            personalizedSummary: recording['personalized_summary'],
+            categories: List<String>.from(recording['categories'] ?? []),
+          ));
         }
       }
+      
+      setState(() {
+        _entries = entries;
+        _loading = false;
+      });
+    } catch (e) {
+      print('Error loading archive: $e');
+      setState(() {
+        _entries = [];
+        _loading = false;
+      });
     }
-    setState(() {
-      _entries = entries;
-      _loading = false;
-    });
   }
 
   Future<void> _deleteEntry(_ArchiveEntry entry) async {
-    final appDir = await getApplicationDocumentsDirectory();
-    final folderPath = p.join(
-      appDir.path,
-      'archive',
-      'profile_${widget.profileId}',
-      entry.date,
-      entry.folderName,
-    );
-    // Read uuid from meta.json if it exists
-    final metaFile = File(p.join(folderPath, 'meta.json'));
-    String? uuid;
-    if (await metaFile.exists()) {
-      try {
-        final meta = jsonDecode(await metaFile.readAsString());
-        uuid = meta['uuid'] as String?;
-      } catch (_) {}
+    try {
+      // Delete from Qdrant using UUID
+      if (entry.uuid.isNotEmpty) {
+        // Try to delete recording first (this should always exist)
+        try {
+          await _profileService.deleteRecording(entry.uuid);
+          print('Deleted recording: ${entry.uuid}');
+        } catch (e) {
+          print('Error deleting recording ${entry.uuid}: $e');
+        }
+        
+        // Try to delete event (this might not exist for continuations)
+        try {
+          await _profileService.deleteEvent(entry.uuid);
+          print('Deleted event: ${entry.uuid}');
+        } catch (e) {
+          print('Error deleting event ${entry.uuid} (might not exist): $e');
+        }
+      }
+      
+      // Also delete local audio file if it exists
+      if (entry.audioPath.isNotEmpty) {
+        final audioFile = File(entry.audioPath);
+        if (await audioFile.exists()) {
+          await audioFile.delete();
+          print('Deleted audio file: ${entry.audioPath}');
+        }
+      }
+      
+      await _loadArchive();
+    } catch (e) {
+      print('Error deleting entry: $e');
+      // Show error to user
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to delete recording: $e')),
+      );
     }
-    final dir = Directory(folderPath);
-    if (await dir.exists()) {
-      await dir.delete(recursive: true);
-    }
-    // Remove event from memory.json if uuid found
-    if (uuid != null) {
-      await removeEventFromMemoryByUuid(widget.profileId, uuid);
-    }
-    await _loadArchive();
   }
 
   String _prettifyPrompt(String prompt) {
@@ -271,8 +293,8 @@ class _ArchivePageState extends State<ArchivePage> {
             ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          final memory = await readProfileMemory(widget.profileId);
-          print('memory.json for profile ${widget.profileId}:');
+          final memory = await _profileService.getProfileMemory(widget.profileId);
+          print('Profile memory for ${widget.profileId}:');
           print(memory.toJsonString());
         },
         child: Icon(Icons.bug_report),
@@ -289,6 +311,10 @@ class _ArchiveEntry {
   final String audioPath;
   final String transcript;
   final String folderName;
+  final String uuid;
+  final String? summary;
+  final String? personalizedSummary;
+  final List<String> categories;
 
   _ArchiveEntry({
     required this.date,
@@ -297,5 +323,9 @@ class _ArchiveEntry {
     required this.audioPath,
     required this.transcript,
     required this.folderName,
+    required this.uuid,
+    this.summary,
+    this.personalizedSummary,
+    this.categories = const [],
   });
 }

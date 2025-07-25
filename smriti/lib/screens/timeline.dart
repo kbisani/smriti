@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/sub_user_profile.dart';
 import '../theme.dart';
-import 'dart:io';
-import 'package:path_provider/path_provider.dart';
-import 'dart:convert';
+import '../storage/qdrant_profile_service.dart';
+import 'story_sessions_page.dart';
 
 class _MosaicStory {
   final String summary;
@@ -16,7 +15,18 @@ class _MosaicStory {
 class _TimelineEntry {
   final int year;
   final String summary;
-  _TimelineEntry({required this.year, required this.summary});
+  final String? uuid;
+  final int? sessionCount;
+  final List<Map<String, dynamic>>? sessions;
+  final String? originalPrompt;
+  _TimelineEntry({
+    required this.year, 
+    required this.summary, 
+    this.uuid,
+    this.sessionCount,
+    this.sessions,
+    this.originalPrompt,
+  });
 }
 
 class TimelinePage extends StatefulWidget {
@@ -29,6 +39,7 @@ class TimelinePage extends StatefulWidget {
 
 class _TimelinePageState extends State<TimelinePage> with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  late final QdrantProfileService _profileService;
 
   static const List<String> _predefinedCategories = [
     'love', 'family', 'career', 'wisdom', 'friends', 'education', 'health', 'adventure', 'loss', 'growth'
@@ -38,6 +49,7 @@ class _TimelinePageState extends State<TimelinePage> with SingleTickerProviderSt
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _profileService = QdrantProfileService();
   }
 
   @override
@@ -47,80 +59,66 @@ class _TimelinePageState extends State<TimelinePage> with SingleTickerProviderSt
   }
 
   Future<Map<int, List<_TimelineEntry>>> _loadTimelineEntries() async {
-    final appDir = await getApplicationDocumentsDirectory();
-    final archiveRoot = Directory('${appDir.path}/archive/profile_${widget.profile.id}');
-    Map<int, List<_TimelineEntry>> byYear = {};
-    if (await archiveRoot.exists()) {
-      final dateDirs = archiveRoot.listSync().whereType<Directory>();
-      for (final dateDir in dateDirs) {
-        final recordingDirs = dateDir.listSync().whereType<Directory>();
-        for (final recDir in recordingDirs) {
-          final metaFile = File('${recDir.path}/meta.json');
-          if (await metaFile.exists()) {
-            try {
-              final meta = jsonDecode(await metaFile.readAsString());
-              final year = meta['year'];
-              final summary = meta['personalized_summary'] ?? meta['summary'] ?? '';
-              if (year != null && summary.isNotEmpty) {
-                final y = int.tryParse(year.toString());
-                if (y != null) {
-                  byYear.putIfAbsent(y, () => []).add(_TimelineEntry(year: y, summary: summary));
-                }
-              }
-            } catch (_) {}
-          }
-        }
+    try {
+      final timelineData = await _profileService.getTimelineData(widget.profile.id);
+      final Map<int, List<_TimelineEntry>> byYear = {};
+      
+      // Convert the timeline data to _TimelineEntry objects
+      timelineData.forEach((year, entries) {
+        byYear[year] = entries.map((entry) => _TimelineEntry(
+          year: entry['year'],
+          summary: entry['summary'],
+          uuid: entry['uuid'],
+          sessionCount: entry['session_count'],
+          sessions: entry['sessions'] != null 
+              ? List<Map<String, dynamic>>.from(entry['sessions'])
+              : null,
+          originalPrompt: entry['original_prompt'],
+        )).toList();
+      });
+      
+      // Integrate birth event into timeline
+      final birthYear = widget.profile.birthDate?.year;
+      final birthPlace = widget.profile.birthPlace ?? 'Place?';
+      if (birthYear != null) {
+        byYear.putIfAbsent(birthYear, () => []).insert(
+          0,
+          _TimelineEntry(year: birthYear, summary: 'Born in $birthPlace'),
+        );
       }
+      
+      return byYear;
+    } catch (e) {
+      print('Error loading timeline entries: $e');
+      return {};
     }
-    // Integrate birth event into timeline
-    final birthYear = widget.profile.birthDate?.year;
-    final birthPlace = widget.profile.birthPlace ?? 'Place?';
-    if (birthYear != null) {
-      byYear.putIfAbsent(birthYear, () => []).insert(
-        0,
-        _TimelineEntry(year: birthYear, summary: 'Born in $birthPlace'),
-      );
-    }
-    return byYear;
   }
 
   Future<Map<String, List<_MosaicStory>>> _loadMosaicStories() async {
-    final appDir = await getApplicationDocumentsDirectory();
-    final archiveRoot = Directory('${appDir.path}/archive/profile_${widget.profile.id}');
-    Map<String, List<_MosaicStory>> byCategory = { for (var c in _predefinedCategories) c: [] };
-    if (await archiveRoot.exists()) {
-      final dateDirs = archiveRoot.listSync().whereType<Directory>();
-      for (final dateDir in dateDirs) {
-        final recordingDirs = dateDir.listSync().whereType<Directory>();
-        for (final recDir in recordingDirs) {
-          final metaFile = File('${recDir.path}/meta.json');
-          if (await metaFile.exists()) {
-            try {
-              final meta = jsonDecode(await metaFile.readAsString());
-              final summary = meta['personalized_summary'] ?? meta['summary'] ?? '';
-              final year = meta['year'];
-              final categories = (meta['categories'] is List)
-                ? (meta['categories'] as List<dynamic>).map((e) => e.toString()).toList()
-                : (meta['categories'] is String ? [meta['categories']] : <String>[]);
-              if (summary.isNotEmpty && categories.isNotEmpty) {
-                final story = _MosaicStory(
-                  summary: summary,
-                  year: year != null ? int.tryParse(year.toString()) : null,
-                  categories: categories.cast<String>(),
-                  personalizedSummary: meta['personalized_summary'],
-                );
-                for (final cat in categories) {
-                  if (byCategory.containsKey(cat)) {
-                    byCategory[cat]!.add(story);
-                  }
-                }
-              }
-            } catch (_) {}
-          }
-        }
+    try {
+      final mosaicData = await _profileService.getMosaicData(widget.profile.id);
+      final Map<String, List<_MosaicStory>> byCategory = {};
+      
+      // Initialize categories
+      for (var c in _predefinedCategories) {
+        byCategory[c] = [];
       }
+      
+      // Convert the mosaic data to _MosaicStory objects
+      mosaicData.forEach((category, stories) {
+        byCategory[category] = stories.map((story) => _MosaicStory(
+          summary: story['summary'],
+          year: story['year'],
+          categories: List<String>.from(story['categories']),
+          personalizedSummary: story['personalizedSummary'],
+        )).toList();
+      });
+      
+      return byCategory;
+    } catch (e) {
+      print('Error loading mosaic stories: $e');
+      return { for (var c in _predefinedCategories) c: <_MosaicStory>[] };
     }
-    return byCategory;
   }
 
   @override
@@ -173,14 +171,67 @@ class _TimelinePageState extends State<TimelinePage> with SingleTickerProviderSt
                                 child: Text(year.toString(), style: AppTextStyles.label.copyWith(color: AppColors.primary, fontSize: 16)),
                               ),
                               for (final entry in byYear[year]!)
-                                Card(
-                                  color: AppColors.card,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                  elevation: 0,
-                                  margin: EdgeInsets.symmetric(vertical: 6, horizontal: 8),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(16.0),
-                                    child: Text(entry.summary, style: AppTextStyles.body),
+                                GestureDetector(
+                                  onTap: () {
+                                    if (entry.sessions != null && entry.sessions!.isNotEmpty) {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (context) => StorySessionsPage(
+                                            storyData: {
+                                              'sessions': entry.sessions!,
+                                              'summary': entry.summary,
+                                              'year': entry.year,
+                                              'uuid': entry.uuid,
+                                              'session_count': entry.sessionCount ?? 1,
+                                              'original_prompt': entry.originalPrompt ?? '',
+                                            },
+                                            profileName: widget.profile.name,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  child: Card(
+                                    color: AppColors.card,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                    elevation: 0,
+                                    margin: EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16.0),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: Text(entry.summary, style: AppTextStyles.body),
+                                              ),
+                                              if (entry.sessions != null && entry.sessions!.isNotEmpty)
+                                                Icon(Icons.arrow_forward_ios, 
+                                                    size: 16, 
+                                                    color: AppColors.textSecondary),
+                                            ],
+                                          ),
+                                          if (entry.sessionCount != null && entry.sessionCount! > 1) ...[
+                                            const SizedBox(height: 8),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                              decoration: BoxDecoration(
+                                                color: AppColors.primary.withOpacity(0.1),
+                                                borderRadius: BorderRadius.circular(12),
+                                              ),
+                                              child: Text(
+                                                '${entry.sessionCount} sessions',
+                                                style: AppTextStyles.label.copyWith(
+                                                  color: AppColors.primary,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
                                   ),
                                 ),
                             ]

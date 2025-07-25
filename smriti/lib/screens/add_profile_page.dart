@@ -3,13 +3,11 @@ import 'package:uuid/uuid.dart';
 import '../models/sub_user_profile.dart';
 import '../storage/sub_user_profile_storage.dart';
 import '../theme.dart';
-import '../storage/archive_utils.dart';
+import '../storage/qdrant_profile_service.dart';
 import '../models/main_user.dart';
 import '../storage/main_user_storage.dart';
 import 'profile_selection.dart';
 import '../models/profile_memory.dart';
-import 'dart:io';
-import 'package:path_provider/path_provider.dart';
 
 class AddProfilePage extends StatefulWidget {
   final bool isMainUser;
@@ -21,6 +19,7 @@ class AddProfilePage extends StatefulWidget {
 class _AddProfilePageState extends State<AddProfilePage> {
   int _currentStep = 0;
   final _formKey = GlobalKey<FormState>();
+  late final QdrantProfileService _profileService;
 
   // Step 1 fields
   final _nameController = TextEditingController();
@@ -39,6 +38,12 @@ class _AddProfilePageState extends State<AddProfilePage> {
   // Step 3 fields
   bool _archived = false;
   bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _profileService = QdrantProfileService();
+  }
 
   @override
   void dispose() {
@@ -85,15 +90,14 @@ class _AddProfilePageState extends State<AddProfilePage> {
         archived: _archived,
       );
       await SubUserProfileStorage().addProfile(profile);
-      // Ensure profile archive directory exists before writing memory.json
-      final appDir = await getApplicationDocumentsDirectory();
-      final profileDir = Directory('${appDir.path}/archive/profile_$id');
-      if (!await profileDir.exists()) {
-        await profileDir.create(recursive: true);
-      }
-      // Write initial memory.json with name
+      
+      // Initialize Qdrant service and store profile data
+      await _profileService.initialize();
+      await _profileService.storeProfile(profile);
+      
+      // Create initial memory and store in Qdrant
       final memory = ProfileMemory(name: profile.name);
-      await writeProfileMemory(profile.id, memory);
+      await _profileService.storeProfileMemory(profile.id, memory);
       if (widget.isMainUser) {
         // Save as MainUser as well
         final mainUser = MainUser(
