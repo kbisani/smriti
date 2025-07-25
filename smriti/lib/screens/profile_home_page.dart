@@ -18,7 +18,7 @@ class ProfileHomePage extends StatefulWidget {
   State<ProfileHomePage> createState() => _ProfileHomePageState();
 }
 
-class _ProfileHomePageState extends State<ProfileHomePage> {
+class _ProfileHomePageState extends State<ProfileHomePage> with WidgetsBindingObserver {
   static const Color darkIndigo = Color(0xFF283593);
   int _selectedIndex = 0;
   late final PageController _pageController;
@@ -33,6 +33,11 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
   late final StoryContinuationService _continuationService;
   
   List<String> _usedPrompts = [];
+  
+  // Add refresh keys for FutureBuilders
+  Key _quickStatsKey = UniqueKey();
+  Key _storyContinuationKey = UniqueKey();
+  Key _recentActivityKey = UniqueKey();
 
   @override
   void initState() {
@@ -44,22 +49,51 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
     _promptService = PromptGenerationService(_profileService);
     _continuationService = StoryContinuationService(_profileService);
     
+    WidgetsBinding.instance.addObserver(this);
     _loadInitialPrompt();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _pageController.dispose();
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Refresh data when app comes back to foreground
+    if (state == AppLifecycleState.resumed && _selectedIndex == 0) {
+      _refreshHomeData();
+    }
+  }
+
+  void _refreshHomeData() {
+    print('DEBUG: Refreshing home page data');
+    setState(() {
+      _quickStatsKey = UniqueKey();
+      _storyContinuationKey = UniqueKey();
+      _recentActivityKey = UniqueKey();
+    });
+  }
+
+
   void _onNavTap(int index) {
+    final previousIndex = _selectedIndex;
     setState(() => _selectedIndex = index);
     _pageController.animateToPage(
       index,
       duration: const Duration(milliseconds: 400),
       curve: Curves.easeInOut,
     );
+    
+    // Refresh home data when returning to home tab from record tab
+    if (index == 0 && previousIndex == 1) {
+      print('DEBUG: Returning to home tab from record tab - refreshing data');
+      Future.delayed(const Duration(milliseconds: 500), () {
+        _refreshHomeData();
+      });
+    }
   }
 
   void _goToRecordTab() {
@@ -143,22 +177,580 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
   }
   
   List<String> _getUsedCategories(List<Map<String, dynamic>> recordings) {
-    final categories = <String>{};
+    // Use the same predefined categories as the mosaic view for consistency
+    const predefinedCategories = [
+      'love', 'family', 'career', 'wisdom', 'friends', 'education', 
+      'health', 'adventure', 'loss', 'growth'
+    ];
+    
+    final usedCategories = <String>{};
+    print('DEBUG Dashboard: Processing ${recordings.length} recordings for categories');
+    
     for (final recording in recordings) {
       final recordingCategories = recording['categories'] as List<dynamic>? ?? [];
-      categories.addAll(recordingCategories.cast<String>());
+      final uuid = recording['uuid'] ?? 'unknown';
+      print('DEBUG Dashboard: Recording $uuid has categories: $recordingCategories');
+      
+      for (final category in recordingCategories.cast<String>()) {
+        if (predefinedCategories.contains(category)) {
+          usedCategories.add(category);
+          print('DEBUG Dashboard: Added category: $category');
+        } else {
+          print('DEBUG Dashboard: Skipped non-predefined category: $category');
+        }
+      }
     }
-    return categories.toList();
+    
+    print('DEBUG Dashboard: Final used categories: ${usedCategories.toList()}');
+    return usedCategories.toList();
+  }
+
+  Widget _buildDashboardHome() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildWelcomeHeader(),
+          const SizedBox(height: 24),
+          _buildQuickStats(),
+          const SizedBox(height: 24),
+          _buildPromptCard(),
+          const SizedBox(height: 24),
+          _buildActionTiles(),
+          const SizedBox(height: 24),
+          _buildStoryContinuationSection(),
+          const SizedBox(height: 24),
+          _buildRecentActivity(),
+          const SizedBox(height: 80), // Extra space for bottom nav
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWelcomeHeader() {
+    final hour = DateTime.now().hour;
+    String greeting;
+    if (hour < 12) {
+      greeting = 'Good Morning';
+    } else if (hour < 17) {
+      greeting = 'Good Afternoon';
+    } else {
+      greeting = 'Good Evening';
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.primary.withOpacity(0.1),
+            AppColors.primary.withOpacity(0.05),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.primary.withOpacity(0.1)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.15),
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.primary.withOpacity(0.2), width: 2),
+            ),
+            child: _profile.profileImageUrl != null
+                ? ClipOval(
+                    child: Image.network(
+                      _profile.profileImageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Icon(
+                        Icons.person,
+                        size: 30,
+                        color: AppColors.primary.withOpacity(0.7),
+                      ),
+                    ),
+                  )
+                : Icon(
+                    Icons.person,
+                    size: 30,
+                    color: AppColors.primary.withOpacity(0.7),
+                  ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  greeting,
+                  style: AppTextStyles.body.copyWith(
+                    fontSize: 14,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _profile.name,
+                  style: AppTextStyles.headline.copyWith(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Ready to capture another memory?',
+                  style: AppTextStyles.body.copyWith(
+                    fontSize: 14,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickStats() {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      key: _quickStatsKey,
+      future: _profileService.getAllRecordings(_profile.id),
+      builder: (context, snapshot) {
+        final recordings = snapshot.data ?? [];
+        final categories = _getUsedCategories(recordings);
+        final thisWeek = recordings.where((r) {
+          final date = DateTime.tryParse(r['date'] ?? '');
+          if (date == null) return false;
+          final weekAgo = DateTime.now().subtract(const Duration(days: 7));
+          return date.isAfter(weekAgo);
+        }).length;
+
+        return Row(
+          children: [
+            Expanded(
+              child: _buildStatCard(
+                'Total Memories',
+                recordings.length.toString(),
+                Icons.auto_stories_outlined,
+                AppColors.primary,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildStatCard(
+                'This Week',
+                thisWeek.toString(),
+                Icons.calendar_today_outlined,
+                Colors.green,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildStatCard(
+                'Categories',
+                categories.length.toString(),
+                Icons.category_outlined,
+                Colors.orange,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border.withOpacity(0.1)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.border.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: color, size: 16),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: AppTextStyles.headline.copyWith(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: AppTextStyles.label.copyWith(
+              fontSize: 11,
+              color: AppColors.textSecondary,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPromptCard() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            darkIndigo.withOpacity(0.05),
+            darkIndigo.withOpacity(0.02),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: darkIndigo.withOpacity(0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: darkIndigo.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(Icons.lightbulb_outline, color: darkIndigo, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Today\'s Memory Prompt',
+                      style: AppTextStyles.label.copyWith(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: darkIndigo,
+                      ),
+                    ),
+                    Text(
+                      'AI-generated just for you',
+                      style: AppTextStyles.body.copyWith(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: _regenLoading
+                    ? SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(darkIndigo),
+                        ),
+                      )
+                    : Icon(Icons.refresh, color: darkIndigo, size: 20),
+                tooltip: 'Generate New Prompt',
+                onPressed: _regenLoading ? null : _regeneratePrompt,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            _currentPrompt,
+            style: AppTextStyles.body.copyWith(
+              fontSize: 16,
+              height: 1.4,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              icon: const Icon(Icons.mic, size: 20),
+              label: const Text('Start Recording'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: darkIndigo,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                textStyle: AppTextStyles.body.copyWith(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              onPressed: _goToRecordTab,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionTiles() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Quick Actions',
+          style: AppTextStyles.headline.copyWith(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildActionTile(
+                'Timeline',
+                'View your memories',
+                Icons.timeline,
+                Colors.purple,
+                () => _pageController.animateToPage(
+                  2,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildActionTile(
+                'Archive',
+                'Browse all stories',
+                Icons.archive_outlined,
+                Colors.teal,
+                () => _pageController.animateToPage(
+                  3,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionTile(
+    String title,
+    String subtitle,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border.withOpacity(0.1)),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.border.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              style: AppTextStyles.body.copyWith(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: AppTextStyles.label.copyWith(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecentActivity() {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      key: _recentActivityKey,
+      future: _profileService.getAllRecordings(_profile.id),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        final recentRecordings = snapshot.data!
+            .take(3)
+            .toList();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Recent Memories',
+                  style: AppTextStyles.headline.copyWith(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => _pageController.animateToPage(
+                    3,
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                  ),
+                  child: Text(
+                    'View All',
+                    style: AppTextStyles.body.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ...recentRecordings.map((recording) => _buildRecentActivityItem(recording)),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildRecentActivityItem(Map<String, dynamic> recording) {
+    final summary = recording['personalized_summary'] ?? recording['summary'] ?? '';
+    final date = DateTime.tryParse(recording['date'] ?? '') ?? DateTime.now();
+    final categories = (recording['categories'] as List<dynamic>? ?? [])
+        .cast<String>()
+        .take(2)
+        .toList();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border.withOpacity(0.1)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 8,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.6),
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  summary.length > 60 ? '${summary.substring(0, 60)}...' : summary,
+                  style: AppTextStyles.body.copyWith(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Text(
+                      '${date.day}/${date.month}/${date.year}',
+                      style: AppTextStyles.label.copyWith(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    if (categories.isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          categories.first,
+                          style: AppTextStyles.label.copyWith(
+                            fontSize: 10,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildStoryContinuationSection() {
-    return FutureBuilder<List<Map<String, dynamic>>>(
-      future: _continuationService.findExpandableStories(_profile.id),
+    return FutureBuilder<Map<int, List<Map<String, dynamic>>>>(
+      key: _storyContinuationKey,
+      future: _profileService.getTimelineData(_profile.id),
       builder: (context, snapshot) {
         print('DEBUG: Story continuation snapshot state: ${snapshot.connectionState}');
         
         if (snapshot.hasError) {
-          print('DEBUG: Error loading expandable stories: ${snapshot.error}');
+          print('DEBUG: Error loading timeline stories: ${snapshot.error}');
           return const SizedBox.shrink();
         }
         
@@ -166,8 +758,21 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
           return const SizedBox.shrink();
         }
         
-        final expandableStories = snapshot.data!;
-        print('DEBUG: Found ${expandableStories.length} expandable stories');
+        // Extract all stories from timeline data and filter expandable ones
+        final timelineData = snapshot.data!;
+        final allStories = <Map<String, dynamic>>[];
+        for (final yearStories in timelineData.values) {
+          allStories.addAll(yearStories);
+        }
+        
+        // Filter for stories that can be expanded (have sessions and content)
+        final expandableStories = allStories.where((story) {
+          final hasContent = (story['summary']?.toString().isNotEmpty == true);
+          final sessionCount = story['session_count'] ?? 1;
+          return hasContent && sessionCount >= 1;
+        }).toList();
+        
+        print('DEBUG: Found ${expandableStories.length} expandable stories from timeline data');
         
         if (expandableStories.isEmpty) {
           print('DEBUG: No expandable stories available');
@@ -176,25 +781,74 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
 
         final limitedStories = expandableStories.take(3).toList(); // Show top 3
         print('DEBUG: Showing ${limitedStories.length} expandable stories');
+        
+        // Debug: Print session counts for verification
+        for (final story in limitedStories) {
+          final uuid = story['uuid'] ?? 'unknown';
+          final sessionCount = story['session_count'] ?? 1;
+          final summary = story['summary'] ?? '';
+          print('DEBUG: Story $uuid has $sessionCount sessions - ${summary.length > 30 ? summary.substring(0, 30) + '...' : summary}');
+        }
 
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16),
-          child: Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-            color: Colors.white,
-            elevation: 0,
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Continue Your Stories',
+              style: AppTextStyles.headline.copyWith(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.border.withOpacity(0.1)),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.border.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.auto_stories, color: AppColors.primary),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Continue a Story',
-                        style: AppTextStyles.label.copyWith(fontSize: 16),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(Icons.auto_stories, color: AppColors.primary, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Expand Your Memories',
+                              style: AppTextStyles.body.copyWith(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              'Add more details to existing stories',
+                              style: AppTextStyles.body.copyWith(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -208,7 +862,7 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
                 ],
               ),
             ),
-          ),
+          ],
         );
       },
     );
@@ -216,35 +870,91 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
 
   Widget _buildStoryTile(Map<String, dynamic> story) {
     final summary = story['personalized_summary'] ?? story['summary'] ?? '';
-    final prompt = story['prompt'] ?? '';
+    final year = story['year']?.toString() ?? '';
+    final sessionCount = story['session_count'] ?? 1;
     
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(12),
-        tileColor: AppColors.card,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: Text(
-          prompt.length > 50 ? '${prompt.substring(0, 50)}...' : prompt,
-          style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w500),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+      child: InkWell(
+        onTap: () => _handleStoryContinuation(story),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.card.withOpacity(0.5),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border.withOpacity(0.1)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 4,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.6),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      summary.length > 50 ? '${summary.substring(0, 50)}...' : summary,
+                      style: AppTextStyles.body.copyWith(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        if (year.isNotEmpty) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              year,
+                              style: AppTextStyles.label.copyWith(
+                                fontSize: 10,
+                                color: Colors.blue,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '$sessionCount session${sessionCount > 1 ? 's' : ''}',
+                            style: AppTextStyles.label.copyWith(
+                              fontSize: 10,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.add_circle_outline, size: 20, color: Colors.blue),
+            ],
+          ),
         ),
-        subtitle: summary.isNotEmpty
-            ? Text(
-                summary.length > 80 ? '${summary.substring(0, 80)}...' : summary,
-                style: AppTextStyles.label.copyWith(color: AppColors.textSecondary),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              )
-            : null,
-        trailing: Icon(Icons.add_circle_outline, color: AppColors.primary),
-        onTap: () => _continueStory(story),
       ),
     );
   }
 
-  Future<void> _continueStory(Map<String, dynamic> story) async {
+  Future<void> _handleStoryContinuation(Map<String, dynamic> story) async {
     try {
       // Show loading indicator
       showDialog(
@@ -276,7 +986,7 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
       Navigator.of(context).pop();
 
       // Navigate to record page with the continuation prompt and story context
-      Navigator.of(context).push(
+      final result = await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (context) => RecordPage(
             prompt: continuationPrompt,
@@ -287,6 +997,12 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
           ),
         ),
       );
+      
+      // Refresh data when returning from recording
+      if (result != null) {
+        print('DEBUG: Returned from story continuation recording - refreshing data');
+        _refreshHomeData();
+      }
     } catch (e) {
       // Hide loading dialog if still showing
       Navigator.of(context).pop();
@@ -296,7 +1012,7 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
       // Show fallback prompt with story context
       final fallbackPrompt = _generateFallbackContinuationPrompt(story);
       
-      Navigator.of(context).push(
+      final result = await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (context) => RecordPage(
             prompt: fallbackPrompt,
@@ -307,6 +1023,12 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
           ),
         ),
       );
+      
+      // Refresh data when returning from recording
+      if (result != null) {
+        print('DEBUG: Returned from fallback story continuation recording - refreshing data');
+        _refreshHomeData();
+      }
     }
   }
 
@@ -367,75 +1089,8 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
           physics: const NeverScrollableScrollPhysics(),
           onPageChanged: (index) => setState(() => _selectedIndex = index),
           children: [
-            // Home Tab
-            Center(
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Card(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                        color: Colors.white,
-                        elevation: 0,
-                        child: Padding(
-                          padding: const EdgeInsets.all(24.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text('Start a New Story', style: AppTextStyles.label.copyWith(fontSize: 16)),
-                                      Text('Explore a new memory or experience', 
-                                           style: AppTextStyles.body.copyWith(fontSize: 12, color: AppColors.textSecondary)),
-                                    ],
-                                  ),
-                                  IconButton(
-                                    icon: _regenLoading
-                                        ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                                        : Icon(Icons.refresh, color: AppColors.primary),
-                                    tooltip: 'Generate New Prompt',
-                                    onPressed: _regenLoading ? null : _regeneratePrompt,
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                _currentPrompt,
-                                style: AppTextStyles.headline.copyWith(fontSize: 20, fontWeight: FontWeight.w500),
-                                textAlign: TextAlign.center,
-                              ),
-                              const SizedBox(height: 24),
-                              ElevatedButton.icon(
-                                icon: Icon(Icons.mic),
-                                label: Text('Start Recording'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: darkIndigo,
-                                  foregroundColor: Colors.white,
-                                  elevation: 0,
-                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                  textStyle: AppTextStyles.body.copyWith(fontWeight: FontWeight.bold, fontSize: 16),
-                                ),
-                                onPressed: _goToRecordTab,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-                    _buildStoryContinuationSection(),
-                  ],
-                ),
-              ),
-            ),
+            // Home Tab - Modern Dashboard
+            _buildDashboardHome(),
             // Record Tab
             RecordPage(prompt: _currentPrompt, profileId: _profile.id),
             // Timeline Tab

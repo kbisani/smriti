@@ -477,11 +477,22 @@ class QdrantProfileService {
                 'date': continuation['date'] ?? '',
               });
               
-              // Update the story with the new session
+              // Merge categories from continuation with original story categories
+              final originalCategories = List<String>.from(originalStory['categories'] ?? []);
+              final continuationCategories = List<String>.from(categories ?? []);
+              final mergedCategories = <String>{...originalCategories, ...continuationCategories}.toList();
+              
+              print('DEBUG Mosaic: Merging categories for story $originalStoryUuid:');
+              print('DEBUG Mosaic: Original categories: $originalCategories');
+              print('DEBUG Mosaic: Continuation categories: $continuationCategories'); 
+              print('DEBUG Mosaic: Merged categories: $mergedCategories');
+              
+              // Update the story with the new session and merged categories
               consolidatedStories[originalStoryUuid] = {
                 ...originalStory,
                 'sessions': sessions,
                 'session_count': sessions.length,
+                'categories': mergedCategories, // Use merged categories
                 'consolidated_summary': originalStory['consolidated_summary'], // Preserve existing summary
               };
               print('DEBUG Mosaic: ✅ Added continuation $uuid to story $originalStoryUuid - new session count: ${sessions.length}');
@@ -524,10 +535,23 @@ class QdrantProfileService {
       // Third pass: organize consolidated stories by category
       for (final story in consolidatedStories.values) {
         final categories = story['categories'] as List<String>;
+        print('DEBUG Mosaic: Story ${story['uuid']} has categories: $categories');
         for (final category in categories) {
           if (byCategory.containsKey(category)) {
             byCategory[category]!.add(story);
+            print('DEBUG Mosaic: Added story to category $category. Category now has ${byCategory[category]!.length} stories');
+          } else {
+            print('DEBUG Mosaic: Category $category not in predefined list, skipping');
           }
+        }
+      }
+
+      // Debug: Print final category counts
+      print('DEBUG Mosaic: Final category counts:');
+      for (final category in predefinedCategories) {
+        final count = byCategory[category]!.length;
+        if (count > 0) {
+          print('DEBUG Mosaic: $category: $count stories');
         }
       }
 

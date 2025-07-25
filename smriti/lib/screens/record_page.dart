@@ -289,6 +289,11 @@ class _RecordPageState extends State<RecordPage> with TickerProviderStateMixin {
       _archiveDirPath = null;
       _recordingUuid = null;
     });
+    
+    // Return success result to parent page
+    if (mounted) {
+      Navigator.of(context).pop('success');
+    }
   }
 
   void _cancelEditTranscript() {
