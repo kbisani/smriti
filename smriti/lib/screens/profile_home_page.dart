@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/sub_user_profile.dart';
 import '../theme.dart';
 import 'record_page.dart';
-import 'edit_profile_page.dart';
+import 'profile_page.dart';
 import '../storage/sub_user_profile_storage.dart';
 import '../storage/qdrant_profile_service.dart';
 import '../storage/prompt_generation_service.dart';
@@ -69,7 +69,7 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
   Future<void> _editProfile() async {
     final result = await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => EditProfilePage(profile: _profile),
+        builder: (_) => ProfilePage(profile: _profile),
       ),
     );
     if (result == true) {

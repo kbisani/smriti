@@ -57,18 +57,27 @@ class QdrantProfileService {
 
   /// Store profile memory in Qdrant
   Future<void> storeProfileMemory(String profileId, ProfileMemory memory) async {
-    final embedding = await EmbeddingService.generateMemoryEmbedding(
-      name: memory.name,
-      birthPlace: memory.birthPlace,
-      events: memory.events,
-      relationships: memory.relationships,
-    );
+    try {
+      print('DEBUG storeProfileMemory: Generating embedding for memory...');
+      final embedding = await EmbeddingService.generateMemoryEmbedding(
+        name: memory.name,
+        birthPlace: memory.birthPlace,
+        events: memory.events,
+        relationships: memory.relationships,
+      );
+      print('DEBUG storeProfileMemory: Embedding generated, size: ${embedding.length}');
 
-    await _qdrant.upsertProfileMemory(
-      profileId: profileId,
-      memory: memory,
-      embedding: embedding,
-    );
+      print('DEBUG storeProfileMemory: Calling upsertProfileMemory...');
+      await _qdrant.upsertProfileMemory(
+        profileId: profileId,
+        memory: memory,
+        embedding: embedding,
+      );
+      print('DEBUG storeProfileMemory: Successfully stored memory for profile $profileId');
+    } catch (e) {
+      print('ERROR storeProfileMemory: Failed to store memory: $e');
+      rethrow;
+    }
   }
 
   /// Store individual events in Qdrant
@@ -177,10 +186,12 @@ class QdrantProfileService {
     );
 
     // Extract new facts using AI (similar to existing logic)
+    print('DEBUG ProfileMemory: Current memory before extraction: ${currentMemory.toJsonString()}');
     final extractedMemory = await _extractFactsWithOpenAI(
       transcript: transcript,
       currentMemory: currentMemory,
     );
+    print('DEBUG ProfileMemory: Extracted memory: ${extractedMemory?.toJsonString() ?? 'NULL'}');
 
     if (extractedMemory != null) {
       // Add uuid to each new event if not present
@@ -196,7 +207,10 @@ class QdrantProfileService {
       
       // Update memory
       currentMemory.merge(extractedMemory);
+      print('DEBUG ProfileMemory: Merged memory: ${currentMemory.toJsonString()}');
+      print('DEBUG ProfileMemory: Storing memory for profile: $profileId');
       await storeProfileMemory(profileId, currentMemory);
+      print('DEBUG ProfileMemory: Memory stored successfully');
     }
 
     // Add event from metadata if year/summary exist (fallback)
@@ -404,7 +418,7 @@ class QdrantProfileService {
           final uuid = payload['uuid'] ?? '';
           final isContinuation = payload['is_continuation'] == true;
           
-          print('DEBUG Mosaic: Processing recording - UUID: $uuid, isContinuation: $isContinuation');
+          print('DEBUG Mosaic: Processing recording - UUID: $uuid, isContinuation: $isContinuation, consolidatedSummary: ${payload['consolidated_summary'] != null ? 'EXISTS' : 'NULL'}');
           
           if (summary.isNotEmpty && categories is List && uuid.isNotEmpty) {
             if (!isContinuation) {
@@ -415,6 +429,7 @@ class QdrantProfileService {
                 'categories': List<String>.from(categories),
                 'personalizedSummary': payload['personalized_summary'],
                 'uuid': uuid,
+                'consolidated_summary': payload['consolidated_summary'], // Add stored summary
                 'sessions': [
                   {
                     'uuid': uuid,
@@ -467,6 +482,7 @@ class QdrantProfileService {
                 ...originalStory,
                 'sessions': sessions,
                 'session_count': sessions.length,
+                'consolidated_summary': originalStory['consolidated_summary'], // Preserve existing summary
               };
               print('DEBUG Mosaic: ✅ Added continuation $uuid to story $originalStoryUuid - new session count: ${sessions.length}');
             } else {
@@ -651,17 +667,25 @@ class QdrantProfileService {
       'temperature': 0.3,
     });
     try {
+      print('DEBUG Fact Extraction: Sending request to OpenAI...');
       final response = await http.post(Uri.parse(endpoint), headers: headers, body: body);
+      print('DEBUG Fact Extraction: Response status: ${response.statusCode}');
+      
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final content = data['choices'][0]['message']['content'];
+        print('DEBUG Fact Extraction: AI response: $content');
+        
         if (content.trim().isNotEmpty) {
           final jsonMap = jsonDecode(content);
+          print('DEBUG Fact Extraction: Parsed JSON: $jsonMap');
           return ProfileMemory.fromJson(jsonMap);
         }
+      } else {
+        print('DEBUG Fact Extraction: API error: ${response.body}');
       }
     } catch (e) {
-      // ignore
+      print('DEBUG Fact Extraction: Exception: $e');
     }
     return null;
   }
@@ -679,12 +703,26 @@ class QdrantProfileService {
     };
     final systemPrompt =
         """
-NEVER use variables or placeholders (like [person's name], [spouse's name], [partner's name], etc.) in the summary. If you do not know the real name, OMIT the name entirely and write the summary as if the name is not known. Do NOT use brackets or generic terms. Write the summary naturally without any placeholder or variable.
+CRITICAL: NEVER use placeholders, variables, or bracketed terms like [person's name], [their name], [spouse's name], [partner's name], or similar. These are FORBIDDEN.
 
-Given the following event metadata and the person's memory (as JSON), write a 1-2 sentence summary of the event that is personalized and context-aware. 
-- Use the person's actual name and relationships from the memory if available.
-- Do not invent facts.
-Respond with only the summary text.
+If you don't know a specific name or detail, either:
+1. Use the actual name from the memory data if provided
+2. Write without the name entirely (e.g., "during the summer of 2015" instead of "during a specific summer in [person's name]")
+3. Use generic but natural language (e.g., "they" or "the person")
+
+Write a concise 1-2 sentence summary that sounds natural and specific. Use concrete details from the event metadata.
+
+Examples of GOOD summaries:
+- "Climbed Mount Kilimanjaro in 2019 and reached the summit"  
+- "Started a new job in marketing during the summer of 2015"
+- "Got married in a beautiful ceremony in Hawaii"
+
+Examples of BAD summaries (NEVER do this):
+- "During a specific summer in [person's name] life..."
+- "An important moment when [they] did something..."
+- "A significant event involving [person's name]..."
+
+Respond with ONLY the summary text, no explanation.
 """;
     final userPrompt = 'Event meta: ${jsonEncode(eventMeta)}\nProfile memory: ${memory.toJsonString()}';
     final body = jsonEncode({
@@ -701,12 +739,38 @@ Respond with only the summary text.
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final content = data['choices'][0]['message']['content'];
-        return content.trim();
+        final cleanedContent = _cleanPlaceholders(content.trim());
+        return cleanedContent;
       }
     } catch (e) {
       // ignore
     }
     // Fallback: use the summary from meta
     return eventMeta['summary'] ?? '';
+  }
+
+  /// Clean any remaining placeholders from AI-generated summaries
+  String _cleanPlaceholders(String text) {
+    // Remove common placeholder patterns
+    var cleaned = text
+        // Remove bracketed placeholders like [person's name], [their name], etc.
+        .replaceAll(RegExp(r'\[.*?\]'), '')
+        // Remove phrases with placeholders
+        .replaceAll(RegExp(r'during a specific \w+ in '), 'during ')
+        .replaceAll(RegExp(r'in a specific \w+ '), '')
+        .replaceAll(RegExp(r'involving \[.*?\]'), '')
+        .replaceAll(RegExp(r'when \[.*?\]'), '')
+        // Clean up multiple spaces and bad formatting
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .replaceAll(RegExp(r'^\s*,\s*'), '') // Remove leading commas
+        .replaceAll(RegExp(r'\s*,\s*,\s*'), ', ') // Fix double commas
+        .trim();
+    
+    // If cleaning made the text too short or empty, return original
+    if (cleaned.length < 10) {
+      return text;
+    }
+    
+    return cleaned;
   }
 }

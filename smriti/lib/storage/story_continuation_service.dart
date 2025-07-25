@@ -227,10 +227,30 @@ class StoryContinuationService {
     required String continuationUuid,
   }) async {
     try {
+      // First, find which original story this continuation belongs to
+      String? originalStoryUuid;
+      try {
+        final allRecordings = await _profileService.getAllRecordings(profileId);
+        final continuation = allRecordings.firstWhere(
+          (recording) => recording['uuid'] == continuationUuid,
+          orElse: () => {},
+        );
+        originalStoryUuid = continuation['original_story_uuid'];
+      } catch (e) {
+        print('Could not find original story for continuation: $e');
+      }
+
+      // Delete the continuation
       await _profileService.deleteRecording(continuationUuid);
       await _profileService.deleteEvent(continuationUuid);
       
       print('Story continuation deleted: $continuationUuid');
+
+      // If we found the original story, regenerate its consolidated summary
+      if (originalStoryUuid != null) {
+        print('Regenerating consolidated summary for original story: $originalStoryUuid');
+        await _updateConsolidatedSummary(profileId, originalStoryUuid);
+      }
     } catch (e) {
       print('Error deleting continuation: $e');
       rethrow;
