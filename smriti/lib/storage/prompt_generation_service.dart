@@ -174,37 +174,59 @@ Generate a diverse prompt that explores new territory in their life story.
     required Map<String, dynamic> existingStory,
   }) async {
     final systemPrompt = '''
-You generate follow-up questions for story collection.
+You generate follow-up questions for multi-session story collection.
+
+CONTEXT: This story may have multiple sessions. Focus on the MOST RECENT session to generate the next logical question.
 
 RULES:
-1. Read the story transcript the user provides
-2. Generate a question asking for MORE details about that EXACT story
-3. Reference specific words/details they mentioned
-4. Do NOT ask about different topics
+1. Read all sessions, but focus on the most recent one
+2. Generate a question that naturally continues from where they last left off
+3. Reference specific details from the most recent session
+4. Build on the progression of the story across sessions
+5. Do NOT repeat what was already asked in previous sessions
 
-EXAMPLES:
-- Story: "I graduated college in 2024" → "Tell me more about your graduation in 2024. What was that day like?"
-- Story: "My mom taught me kindness" → "When did your mom teach you about kindness? What exactly did she say?"
+Your question should feel like a natural continuation of their storytelling journey.
 
-Your question MUST be about the story they shared. Respond with ONLY the question.''';
+Respond with ONLY the question.''';
 
-    final transcript = existingStory['transcript'] ?? '';
-    final prompt = existingStory['prompt'] ?? '';
-    final summary = existingStory['personalized_summary'] ?? existingStory['summary'] ?? '';
+    print('DEBUG Prompt Gen: Full story data structure: ${existingStory.toString()}');
+    
+    // Check if we have story_parts (from getConsolidatedStory) or sessions directly
+    List<dynamic> sessions = [];
+    if (existingStory['story_parts'] != null) {
+      sessions = existingStory['story_parts'] as List<dynamic>;
+      print('DEBUG Prompt Gen: Using story_parts, found ${sessions.length} parts');
+    } else if (existingStory['sessions'] != null) {
+      sessions = existingStory['sessions'] as List<dynamic>;
+      print('DEBUG Prompt Gen: Using sessions, found ${sessions.length} sessions');
+    } else {
+      // Fallback to treating the whole story as a single session
+      sessions = [existingStory];
+      print('DEBUG Prompt Gen: Using fallback single session');
+    }
+    
+    final mostRecentSession = sessions.isNotEmpty ? sessions.last : {};
+    final allTranscripts = sessions.map((s) => s['transcript'] ?? '').join(' ... ');
+    
+    final recentTranscript = mostRecentSession['transcript'] ?? '';
+    final recentPrompt = mostRecentSession['prompt'] ?? '';
+    final originalTranscript = sessions.isNotEmpty ? sessions.first['transcript'] ?? '' : '';
+    
+    print('DEBUG Prompt Gen: Original transcript: "$originalTranscript"');
+    print('DEBUG Prompt Gen: Most recent transcript: "$recentTranscript"');
+    print('DEBUG Prompt Gen: Recent prompt: "$recentPrompt"');
+    print('DEBUG Prompt Gen: All transcripts: "$allTranscripts"');
     
     final userPrompt = '''
-Original story details:
-- What they said: "$transcript"
-- Original prompt: "$prompt"  
-- Summary: "$summary"
-- Year: ${existingStory['year']}
+Story progression:
+- Original story: "$originalTranscript"
+- All sessions: "$allTranscripts"
+- Most recent session: "$recentTranscript"
+- Last prompt used: "$recentPrompt"
 
-Generate a follow-up question that asks for MORE DETAILS about this specific story. Reference the actual content they shared.
-''';
+Generate the next logical follow-up question that continues naturally from their most recent session.''';
 
-    print('DEBUG: Sending to AI - Transcript: "$transcript"');
-    print('DEBUG: Sending to AI - Prompt: "$prompt"');
-    print('DEBUG: Sending to AI - Summary: "$summary"');
+    print('DEBUG Prompt Gen: Sending prompt to AI: $userPrompt');
 
     return await _callOpenAI(systemPrompt, userPrompt) ?? _getFallbackPrompt();
   }

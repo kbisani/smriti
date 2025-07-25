@@ -73,12 +73,14 @@ class RecordPage extends StatefulWidget {
   final String profileId;
   final bool isStoryContinuation;
   final String? originalStoryUuid;
+  final Map<String, dynamic>? storyContext;
   
   const RecordPage({
     required this.prompt, 
     required this.profileId, 
     this.isStoryContinuation = false,
     this.originalStoryUuid,
+    this.storyContext,
     Key? key
   }) : super(key: key);
 
@@ -86,7 +88,7 @@ class RecordPage extends StatefulWidget {
   State<RecordPage> createState() => _RecordPageState();
 }
 
-class _RecordPageState extends State<RecordPage> {
+class _RecordPageState extends State<RecordPage> with TickerProviderStateMixin {
   bool _isRecording = false;
   bool _isTranscribing = false;
   String _transcription = '';
@@ -99,13 +101,36 @@ class _RecordPageState extends State<RecordPage> {
   String? _recordingUuid; // Track the uuid for this recording
   late final QdrantProfileService _profileService;
   late final StoryContinuationService _continuationService;
+  
+  // Animation controllers
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
     _profileService = QdrantProfileService();
     _continuationService = StoryContinuationService(_profileService);
+    
+    // Initialize animations
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeInOut,
+    ));
+    
     _initRecorder();
+    
+    // Start fade animation if this is a story continuation
+    if (widget.isStoryContinuation) {
+      _fadeController.forward();
+    }
   }
 
   Future<void> _initRecorder() async {
@@ -116,6 +141,7 @@ class _RecordPageState extends State<RecordPage> {
   void dispose() {
     _recorder.closeRecorder();
     _transcriptController.dispose();
+    _fadeController.dispose();
     super.dispose();
   }
 
@@ -273,6 +299,107 @@ class _RecordPageState extends State<RecordPage> {
     });
   }
 
+  Widget _buildStoryContext() {
+    if (!widget.isStoryContinuation || widget.storyContext == null) {
+      return const SizedBox.shrink();
+    }
+
+    final storyParts = widget.storyContext!['story_parts'] as List<dynamic>? ?? [];
+    final recentSessions = storyParts.take(3).toList(); // Show last 3 sessions
+    
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Story So Far',
+              style: AppTextStyles.label.copyWith(
+                fontSize: 14,
+                color: AppColors.primary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ...recentSessions.asMap().entries.map((entry) {
+              final index = entry.key;
+              final session = entry.value;
+              final transcript = session['transcript'] ?? '';
+              final isRecent = index == recentSessions.length - 1;
+              
+              return AnimatedContainer(
+                duration: Duration(milliseconds: 300 + (index * 100)),
+                margin: const EdgeInsets.only(bottom: 8),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isRecent 
+                        ? AppColors.primary.withOpacity(0.1)
+                        : AppColors.card.withOpacity(0.7),
+                    borderRadius: BorderRadius.circular(12),
+                    border: isRecent 
+                        ? Border.all(color: AppColors.primary.withOpacity(0.3))
+                        : null,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: isRecent ? AppColors.primary : AppColors.textSecondary,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              isRecent ? 'Latest' : 'Session ${index + 1}',
+                              style: AppTextStyles.label.copyWith(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        transcript.length > 100 
+                            ? '${transcript.substring(0, 100)}...'
+                            : transcript,
+                        style: AppTextStyles.body.copyWith(
+                          fontSize: 13,
+                          color: isRecent 
+                              ? AppColors.textPrimary 
+                              : AppColors.textSecondary,
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+            if (storyParts.length > 3)
+              Container(
+                padding: const EdgeInsets.all(8),
+                child: Text(
+                  '+ ${storyParts.length - 3} more sessions',
+                  style: AppTextStyles.label.copyWith(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -297,6 +424,10 @@ class _RecordPageState extends State<RecordPage> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               SizedBox(height: widget.isStoryContinuation ? 16 : 32),
+              
+              // Show story context for continuations
+              _buildStoryContext(),
+              
               Text(
                 widget.prompt,
                 style: AppTextStyles.body.copyWith(fontSize: 18, fontWeight: FontWeight.w500),
@@ -329,13 +460,19 @@ class _RecordPageState extends State<RecordPage> {
                 ),
               ),
               const SizedBox(height: 32),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.card,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                width: double.infinity,
+              
+              // Use Expanded to prevent overflow
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppColors.card,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        width: double.infinity,
                 child: _isTranscribing
                     ? Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -357,7 +494,7 @@ class _RecordPageState extends State<RecordPage> {
                                 children: [
                                   TextField(
                                     controller: _transcriptController,
-                                    maxLines: 8,
+                                    maxLines: null, // Allow unlimited lines
                                     minLines: 3,
                                     onChanged: (val) => _editableTranscript = val,
                                     decoration: InputDecoration(
@@ -403,13 +540,16 @@ class _RecordPageState extends State<RecordPage> {
                                   ),
                                 ],
                               ),
-              ),
-              if (_audioPath != null && !_isRecording && !_isTranscribing)
-                Padding(
-                  padding: const EdgeInsets.only(top: 12.0),
-                  child: Text('Audio saved: $_audioPath', style: AppTextStyles.label),
+                      ),
+                      if (_audioPath != null && !_isRecording && !_isTranscribing)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 12.0),
+                          child: Text('Audio saved: $_audioPath', style: AppTextStyles.label),
+                        ),
+                    ],
+                  ),
                 ),
-              const Spacer(),
+              ),
               if (_isRecording)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,

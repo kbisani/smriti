@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'package:uuid/uuid.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'qdrant_profile_service.dart';
 import 'embedding_service.dart';
 
@@ -55,6 +57,9 @@ class StoryContinuationService {
 
       // Update the original story to reference its continuations
       await _linkStoryParts(profileId, originalStoryUuid, continuationUuid);
+
+      // Generate new consolidated summary for the complete story
+      await _updateConsolidatedSummary(profileId, originalStoryUuid);
 
       print('Story continuation appended successfully');
     } catch (e) {
@@ -268,6 +273,112 @@ class StoryContinuationService {
         'multi_part_stories': 0,
         'average_parts_per_story': '1.0',
       };
+    }
+  }
+
+  /// Update consolidated summary for a story with multiple sessions
+  Future<void> _updateConsolidatedSummary(String profileId, String originalStoryUuid) async {
+    try {
+      // Get all story parts
+      final storyParts = await getStoryParts(profileId, originalStoryUuid);
+      if (storyParts.length <= 1) {
+        // Single session story doesn't need consolidated summary
+        return;
+      }
+
+      // Combine all transcripts
+      final allTranscripts = storyParts.asMap().entries.map((entry) {
+        final index = entry.key;
+        final part = entry.value;
+        return '--- Session ${index + 1} ---\n\n${part['transcript'] ?? ''}';
+      }).join('\n\n');
+
+      // Generate consolidated summary
+      final consolidatedSummary = await _generateConsolidatedSummary(allTranscripts, profileId);
+
+      // Update the original story with consolidated summary
+      final allRecordings = await _profileService.getAllRecordings(profileId);
+      final originalStory = allRecordings.firstWhere(
+        (recording) => recording['uuid'] == originalStoryUuid,
+        orElse: () => throw Exception('Original story not found'),
+      );
+
+      // Update metadata with consolidated summary
+      final updatedMetadata = {
+        ...originalStory,
+        'consolidated_summary': consolidatedSummary,
+      };
+
+      // Store updated recording
+      await _profileService.storeRecording(
+        profileId: profileId,
+        recordingId: originalStoryUuid,
+        transcript: originalStory['transcript'] ?? '',
+        metadata: updatedMetadata,
+      );
+
+      print('Consolidated summary updated for story: $originalStoryUuid');
+    } catch (e) {
+      print('Error updating consolidated summary: $e');
+    }
+  }
+
+  /// Generate AI consolidated summary (shorter version)
+  Future<String> _generateConsolidatedSummary(String allTranscripts, String profileId) async {
+    final apiKey = dotenv.env['OPENAI_API_KEY'] ?? '';
+    final endpoint = 'https://api.openai.com/v1/chat/completions';
+    
+    final systemPrompt = '''
+You are an expert at creating concise, thoughtful summaries of personal stories that span multiple recording sessions.
+
+Create a flowing narrative summary that:
+1. Combines all sessions into one coherent story
+2. Highlights the most important progression and key details
+3. Maintains the personal, emotional tone
+4. Is EXACTLY 1 paragraph (3-4 sentences maximum)
+5. Focuses on the essence and meaning of the complete story
+
+Be concise but capture the heart of the story.
+''';
+
+    final userPrompt = '''
+This is a multi-session story. Please create a concise 1-paragraph summary that weaves all sessions together:
+
+$allTranscripts
+
+Create a brief but meaningful narrative summary of this complete story.
+''';
+
+    try {
+      final requestBody = {
+        'model': 'gpt-3.5-turbo',
+        'messages': [
+          {'role': 'system', 'content': systemPrompt},
+          {'role': 'user', 'content': userPrompt},
+        ],
+        'max_tokens': 150, // Reduced from 300 to keep it shorter
+        'temperature': 0.7,
+      };
+
+      final response = await http.post(
+        Uri.parse(endpoint),
+        headers: {
+          'Authorization': 'Bearer $apiKey',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(requestBody),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['choices'][0]['message']['content']?.trim() ?? 'Summary not available';
+      } else {
+        print('OpenAI API error: ${response.statusCode} - ${response.body}');
+        return 'Summary not available';
+      }
+    } catch (e) {
+      print('Error calling OpenAI API: $e');
+      return 'Summary not available';
     }
   }
 }

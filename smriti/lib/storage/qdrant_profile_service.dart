@@ -241,7 +241,9 @@ class QdrantProfileService {
       final Map<int, List<Map<String, dynamic>>> byYear = {};
       final Map<String, Map<String, dynamic>> consolidatedStories = {};
       
-      // First pass: identify original stories and group continuations
+      // First pass: collect all original stories
+      final List<Map<String, dynamic>> continuations = [];
+      
       for (final recording in recordings) {
         try {
           final payload = recording['payload'] as Map<String, dynamic>;
@@ -249,9 +251,8 @@ class QdrantProfileService {
           final summary = payload['personalized_summary'] ?? payload['summary'] ?? '';
           final uuid = payload['uuid'] ?? '';
           final isContinuation = payload['is_continuation'] == true;
-          final originalStoryUuid = payload['original_story_uuid'];
           
-          print('DEBUG Timeline: Processing recording - UUID: $uuid, isContinuation: $isContinuation, originalStoryUuid: $originalStoryUuid');
+          print('DEBUG Timeline: Processing recording - UUID: $uuid, isContinuation: $isContinuation, originalStoryUuid: ${payload['original_story_uuid']}, consolidatedSummary: ${payload['consolidated_summary'] != null ? 'EXISTS' : 'NULL'}');
           
           if (year != null && summary.isNotEmpty && uuid.isNotEmpty) {
             final y = int.tryParse(year.toString());
@@ -264,6 +265,7 @@ class QdrantProfileService {
                   'uuid': uuid,
                   'original_prompt': payload['prompt'] ?? '',
                   'transcript': payload['transcript'] ?? '',
+                  'consolidated_summary': payload['consolidated_summary'], // Store pre-generated summary
                   'sessions': [
                     {
                       'uuid': uuid,
@@ -274,28 +276,11 @@ class QdrantProfileService {
                   ],
                   'session_count': 1,
                 };
-                print('DEBUG Timeline: Added original story - UUID: $uuid');
-              } else if (originalStoryUuid != null && consolidatedStories.containsKey(originalStoryUuid)) {
-                // This is a continuation - add it as a session to the original story
-                final originalStory = consolidatedStories[originalStoryUuid]!;
-                final sessions = List<Map<String, dynamic>>.from(originalStory['sessions'] ?? []);
-                sessions.add({
-                  'uuid': uuid,
-                  'transcript': payload['transcript'] ?? '',
-                  'prompt': payload['continuation_prompt'] ?? payload['prompt'] ?? '',
-                  'date': payload['date'] ?? '',
-                });
-                
-                // Update the story with the new session
-                consolidatedStories[originalStoryUuid] = {
-                  ...originalStory,
-                  'sessions': sessions,
-                  'session_count': sessions.length,
-                  'summary': originalStory['summary'] + ' (${sessions.length} sessions)',
-                };
-                print('DEBUG Timeline: Added continuation to story $originalStoryUuid - new session count: ${sessions.length}');
-              } else if (isContinuation && originalStoryUuid != null) {
-                print('DEBUG Timeline: WARNING - Continuation found but original story $originalStoryUuid not in consolidatedStories yet');
+                print('DEBUG Timeline: ✅ Added original story - UUID: $uuid');
+              } else {
+                // Store continuation for second pass
+                continuations.add(payload);
+                print('DEBUG Timeline: 📝 Stored continuation $uuid for later processing (original: ${payload['original_story_uuid']})');
               }
             }
           }
@@ -305,9 +290,79 @@ class QdrantProfileService {
         }
       }
       
+      print('DEBUG Timeline: Original stories: ${consolidatedStories.length}, Continuations to process: ${continuations.length}');
+      print('DEBUG Timeline: Original story UUIDs: ${consolidatedStories.keys.toList()}');
+      
+      // Second pass: process all continuations
+      for (final continuation in continuations) {
+        try {
+          final uuid = continuation['uuid'] ?? '';
+          final originalStoryUuid = continuation['original_story_uuid'];
+          final year = continuation['year'];
+          final summary = continuation['personalized_summary'] ?? continuation['summary'] ?? '';
+          
+          print('DEBUG Timeline: Processing continuation $uuid for original story $originalStoryUuid');
+          
+          if (originalStoryUuid != null) {
+            if (consolidatedStories.containsKey(originalStoryUuid)) {
+              // Add continuation as session to original story
+              final originalStory = consolidatedStories[originalStoryUuid]!;
+              final sessions = List<Map<String, dynamic>>.from(originalStory['sessions'] ?? []);
+              sessions.add({
+                'uuid': uuid,
+                'transcript': continuation['transcript'] ?? '',
+                'prompt': continuation['continuation_prompt'] ?? continuation['prompt'] ?? '',
+                'date': continuation['date'] ?? '',
+              });
+              
+              // Update the story with the new session
+              consolidatedStories[originalStoryUuid] = {
+                ...originalStory,
+                'sessions': sessions,
+                'session_count': sessions.length,
+                'consolidated_summary': originalStory['consolidated_summary'], // Preserve existing summary
+              };
+              print('DEBUG Timeline: ✅ Added continuation $uuid to story $originalStoryUuid - new session count: ${sessions.length}');
+            } else {
+              print('DEBUG Timeline: ❌ WARNING - Could not find original story $originalStoryUuid for continuation $uuid');
+              print('DEBUG Timeline: Available original stories: ${consolidatedStories.keys.toList()}');
+              
+              // FALLBACK: Create a standalone story entry if original not found
+              // This ensures continuations don't disappear from timeline
+              final y = int.tryParse(year?.toString() ?? '');
+              if (y != null && summary.isNotEmpty) {
+                print('DEBUG Timeline: 🔄 Creating fallback story entry for orphaned continuation $uuid');
+                consolidatedStories[uuid] = {
+                  'year': y,
+                  'summary': '$summary (continuation)',
+                  'uuid': uuid,
+                  'original_prompt': continuation['continuation_prompt'] ?? continuation['prompt'] ?? '',
+                  'transcript': continuation['transcript'] ?? '',
+                  'sessions': [
+                    {
+                      'uuid': uuid,
+                      'transcript': continuation['transcript'] ?? '',
+                      'prompt': continuation['continuation_prompt'] ?? continuation['prompt'] ?? '',
+                      'date': continuation['date'] ?? '',
+                    }
+                  ],
+                  'session_count': 1,
+                  'is_orphaned_continuation': true,
+                };
+                print('DEBUG Timeline: ✅ Created fallback story entry for continuation $uuid');
+              }
+            }
+          } else {
+            print('DEBUG Timeline: ❌ Continuation $uuid has no original_story_uuid');
+          }
+        } catch (e) {
+          print('Warning: Could not process continuation: $e');
+        }
+      }
+      
       print('DEBUG Timeline: Final consolidated stories count: ${consolidatedStories.length}');
       
-      // Second pass: organize consolidated stories by year for timeline
+      // Third pass: organize consolidated stories by year for timeline
       for (final story in consolidatedStories.values) {
         final year = story['year'] as int;
         byYear.putIfAbsent(year, () => []).add(story);
@@ -324,6 +379,7 @@ class QdrantProfileService {
   Future<Map<String, List<Map<String, dynamic>>>> getMosaicData(String profileId) async {
     try {
       final recordings = await _qdrant.getRecordingsByProfile(profileId);
+      print('DEBUG Mosaic: Total recordings found: ${recordings.length}');
       final Map<String, List<Map<String, dynamic>>> byCategory = {};
       final Map<String, Map<String, dynamic>> consolidatedStories = {};
       
@@ -336,7 +392,9 @@ class QdrantProfileService {
         byCategory[category] = [];
       }
 
-      // First pass: group continuations with original stories
+      // First pass: collect all original stories
+      final List<Map<String, dynamic>> continuations = [];
+      
       for (final recording in recordings) {
         try {
           final payload = recording['payload'] as Map<String, dynamic>;
@@ -345,7 +403,8 @@ class QdrantProfileService {
           final categories = payload['categories'];
           final uuid = payload['uuid'] ?? '';
           final isContinuation = payload['is_continuation'] == true;
-          final originalStoryUuid = payload['original_story_uuid'];
+          
+          print('DEBUG Mosaic: Processing recording - UUID: $uuid, isContinuation: $isContinuation');
           
           if (summary.isNotEmpty && categories is List && uuid.isNotEmpty) {
             if (!isContinuation) {
@@ -356,15 +415,21 @@ class QdrantProfileService {
                 'categories': List<String>.from(categories),
                 'personalizedSummary': payload['personalized_summary'],
                 'uuid': uuid,
+                'sessions': [
+                  {
+                    'uuid': uuid,
+                    'transcript': payload['transcript'] ?? '',
+                    'prompt': payload['prompt'] ?? '',
+                    'date': payload['date'] ?? '',
+                  }
+                ],
                 'session_count': 1,
               };
-            } else if (originalStoryUuid != null && consolidatedStories.containsKey(originalStoryUuid)) {
-              // This is a continuation - update the original story's session count
-              final originalStory = consolidatedStories[originalStoryUuid]!;
-              consolidatedStories[originalStoryUuid] = {
-                ...originalStory,
-                'session_count': (originalStory['session_count'] ?? 1) + 1,
-              };
+              print('DEBUG Mosaic: ✅ Added original story - UUID: $uuid');
+            } else {
+              // Store continuation for second pass
+              continuations.add(payload);
+              print('DEBUG Mosaic: 📝 Stored continuation $uuid for later processing');
             }
           }
         } catch (e) {
@@ -372,8 +437,75 @@ class QdrantProfileService {
           // Continue with next recording
         }
       }
+      
+      print('DEBUG Mosaic: Original stories: ${consolidatedStories.length}, Continuations to process: ${continuations.length}');
+      
+      // Second pass: process all continuations
+      for (final continuation in continuations) {
+        try {
+          final uuid = continuation['uuid'] ?? '';
+          final originalStoryUuid = continuation['original_story_uuid'];
+          final summary = continuation['personalized_summary'] ?? continuation['summary'] ?? '';
+          final categories = continuation['categories'];
+          
+          print('DEBUG Mosaic: Processing continuation $uuid for original story $originalStoryUuid');
+          
+          if (originalStoryUuid != null) {
+            if (consolidatedStories.containsKey(originalStoryUuid)) {
+              // Add continuation as session to original story
+              final originalStory = consolidatedStories[originalStoryUuid]!;
+              final sessions = List<Map<String, dynamic>>.from(originalStory['sessions'] ?? []);
+              sessions.add({
+                'uuid': uuid,
+                'transcript': continuation['transcript'] ?? '',
+                'prompt': continuation['continuation_prompt'] ?? continuation['prompt'] ?? '',
+                'date': continuation['date'] ?? '',
+              });
+              
+              // Update the story with the new session
+              consolidatedStories[originalStoryUuid] = {
+                ...originalStory,
+                'sessions': sessions,
+                'session_count': sessions.length,
+              };
+              print('DEBUG Mosaic: ✅ Added continuation $uuid to story $originalStoryUuid - new session count: ${sessions.length}');
+            } else {
+              print('DEBUG Mosaic: ❌ WARNING - Could not find original story $originalStoryUuid for continuation $uuid');
+              
+              // FALLBACK: Create a standalone story entry if original not found
+              if (summary.isNotEmpty && categories is List) {
+                print('DEBUG Mosaic: 🔄 Creating fallback story entry for orphaned continuation $uuid');
+                consolidatedStories[uuid] = {
+                  'summary': '$summary (continuation)',
+                  'year': continuation['year'] != null ? int.tryParse(continuation['year'].toString()) : null,
+                  'categories': List<String>.from(categories),
+                  'personalizedSummary': continuation['personalized_summary'],
+                  'uuid': uuid,
+                  'sessions': [
+                    {
+                      'uuid': uuid,
+                      'transcript': continuation['transcript'] ?? '',
+                      'prompt': continuation['continuation_prompt'] ?? continuation['prompt'] ?? '',
+                      'date': continuation['date'] ?? '',
+                    }
+                  ],
+                  'session_count': 1,
+                  'is_orphaned_continuation': true,
+                };
+                print('DEBUG Mosaic: ✅ Created fallback story entry for continuation $uuid');
+              }
+            }
+          } else {
+            print('DEBUG Mosaic: ❌ Continuation $uuid has no original_story_uuid');
+          }
+        } catch (e) {
+          print('Warning: Could not process continuation for mosaic: $e');
+        }
+      }
+      
+      print('DEBUG Mosaic: Final consolidated stories count: ${consolidatedStories.length}');
 
-      // Second pass: organize consolidated stories by category
+      // Third pass: organize consolidated stories by category
       for (final story in consolidatedStories.values) {
         final categories = story['categories'] as List<String>;
         for (final category in categories) {

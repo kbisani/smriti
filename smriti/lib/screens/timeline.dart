@@ -9,7 +9,22 @@ class _MosaicStory {
   final int? year;
   final List<String> categories;
   final String? personalizedSummary;
-  _MosaicStory({required this.summary, this.year, required this.categories, this.personalizedSummary});
+  final String? uuid;
+  final int? sessionCount;
+  final List<Map<String, dynamic>>? sessions;
+  final String? originalPrompt;
+  final String? consolidatedSummary;
+  _MosaicStory({
+    required this.summary, 
+    this.year, 
+    required this.categories, 
+    this.personalizedSummary,
+    this.uuid,
+    this.sessionCount,
+    this.sessions,
+    this.originalPrompt,
+    this.consolidatedSummary,
+  });
 }
 
 class _TimelineEntry {
@@ -19,6 +34,7 @@ class _TimelineEntry {
   final int? sessionCount;
   final List<Map<String, dynamic>>? sessions;
   final String? originalPrompt;
+  final String? consolidatedSummary;
   _TimelineEntry({
     required this.year, 
     required this.summary, 
@@ -26,6 +42,7 @@ class _TimelineEntry {
     this.sessionCount,
     this.sessions,
     this.originalPrompt,
+    this.consolidatedSummary,
   });
 }
 
@@ -74,6 +91,7 @@ class _TimelinePageState extends State<TimelinePage> with SingleTickerProviderSt
               ? List<Map<String, dynamic>>.from(entry['sessions'])
               : null,
           originalPrompt: entry['original_prompt'],
+          consolidatedSummary: entry['consolidated_summary'],
         )).toList();
       });
       
@@ -111,6 +129,13 @@ class _TimelinePageState extends State<TimelinePage> with SingleTickerProviderSt
           year: story['year'],
           categories: List<String>.from(story['categories']),
           personalizedSummary: story['personalizedSummary'],
+          uuid: story['uuid'],
+          sessionCount: story['session_count'],
+          sessions: story['sessions'] != null 
+              ? List<Map<String, dynamic>>.from(story['sessions'])
+              : null,
+          originalPrompt: story['original_prompt'],
+          consolidatedSummary: story['consolidated_summary'],
         )).toList();
       });
       
@@ -184,6 +209,7 @@ class _TimelinePageState extends State<TimelinePage> with SingleTickerProviderSt
                                               'uuid': entry.uuid,
                                               'session_count': entry.sessionCount ?? 1,
                                               'original_prompt': entry.originalPrompt ?? '',
+                                              'consolidated_summary': entry.consolidatedSummary,
                                             },
                                             profileName: widget.profile.name,
                                           ),
@@ -271,7 +297,7 @@ class _TimelinePageState extends State<TimelinePage> with SingleTickerProviderSt
                               onTap: () {
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
-                                    builder: (_) => CategoryStoriesPage(category: cat, stories: stories),
+                                    builder: (_) => CategoryStoriesPage(category: cat, stories: stories, profile: widget.profile),
                                   ),
                                 );
                               },
@@ -320,7 +346,8 @@ class _TimelinePageState extends State<TimelinePage> with SingleTickerProviderSt
 class CategoryStoriesPage extends StatelessWidget {
   final String category;
   final List<_MosaicStory> stories;
-  const CategoryStoriesPage({required this.category, required this.stories, Key? key}) : super(key: key);
+  final SubUserProfile? profile;
+  const CategoryStoriesPage({required this.category, required this.stories, this.profile, Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -349,28 +376,76 @@ class CategoryStoriesPage extends StatelessWidget {
                 ),
                 itemBuilder: (context, idx) {
                   final story = stories[idx];
-                  return Card(
-                    color: AppColors.card,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    elevation: 2,
-                    shadowColor: AppColors.border.withOpacity(0.2),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (story.year != null)
-                            Text(story.year.toString(), style: AppTextStyles.label.copyWith(fontSize: 12, color: AppColors.textSecondary)),
-                          const SizedBox(height: 6),
-                          Expanded(
-                            child: Text(
-                              story.summary,
-                              style: AppTextStyles.body,
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 4,
+                  return GestureDetector(
+                    onTap: () {
+                      if (story.sessions != null && story.sessions!.isNotEmpty && story.uuid != null) {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => StorySessionsPage(
+                              storyData: {
+                                'sessions': story.sessions!,
+                                'summary': story.summary,
+                                'year': story.year,
+                                'uuid': story.uuid,
+                                'session_count': story.sessionCount ?? 1,
+                                'original_prompt': story.originalPrompt ?? '',
+                                'consolidated_summary': story.consolidatedSummary,
+                              },
+                              profileName: profile?.name ?? 'Profile',
                             ),
                           ),
-                        ],
+                        );
+                      }
+                    },
+                    child: Card(
+                      color: AppColors.card,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      elevation: 2,
+                      shadowColor: AppColors.border.withOpacity(0.2),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                if (story.year != null)
+                                  Text(story.year.toString(), style: AppTextStyles.label.copyWith(fontSize: 12, color: AppColors.textSecondary)),
+                                const Spacer(),
+                                if (story.sessions != null && story.sessions!.isNotEmpty)
+                                  Icon(Icons.arrow_forward_ios, 
+                                      size: 12, 
+                                      color: AppColors.textSecondary),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Expanded(
+                              child: Text(
+                                story.summary,
+                                style: AppTextStyles.body,
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 4,
+                              ),
+                            ),
+                            if (story.sessionCount != null && story.sessionCount! > 1) ...[
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  '${story.sessionCount} sessions',
+                                  style: AppTextStyles.label.copyWith(
+                                    color: AppColors.primary,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
                     ),
                   );

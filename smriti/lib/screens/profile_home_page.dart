@@ -258,10 +258,16 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
       print('DEBUG: Generating continuation prompt for story: ${story['uuid']}');
       print('DEBUG: Story data: ${story.toString()}');
 
+      // Get the complete story data with all sessions
+      final completeStory = await _continuationService.getConsolidatedStory(
+        _profile.id,
+        story['uuid'],
+      );
+
       // Generate a continuation prompt for this specific story
       final continuationPrompt = await _promptService.generateContinuationPrompt(
         profileId: _profile.id,
-        existingStory: story,
+        existingStory: completeStory ?? story,
       );
 
       print('DEBUG: Generated continuation prompt: $continuationPrompt');
@@ -269,7 +275,7 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
       // Hide loading dialog
       Navigator.of(context).pop();
 
-      // Navigate to record page with the continuation prompt
+      // Navigate to record page with the continuation prompt and story context
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (context) => RecordPage(
@@ -277,6 +283,7 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
             profileId: _profile.id,
             isStoryContinuation: true,
             originalStoryUuid: story['uuid'],
+            storyContext: completeStory,
           ),
         ),
       );
@@ -296,6 +303,7 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
             profileId: _profile.id,
             isStoryContinuation: true,
             originalStoryUuid: story['uuid'],
+            storyContext: null, // No context available in error case
           ),
         ),
       );
