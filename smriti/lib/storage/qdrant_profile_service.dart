@@ -612,15 +612,20 @@ class QdrantProfileService {
   Future<String?> _getAudioPath(String profileId, String recordingId) async {
     try {
       final appDir = await getApplicationDocumentsDirectory();
-      final audioPath = '${appDir.path}/archive/profile_$profileId/audio/$recordingId.aac';
+      final audioPath = '${appDir.path}/archive/profile_$profileId/audio/$recordingId.wav';
       final audioFile = File(audioPath);
       
-      if (await audioFile.exists()) {
+      print('DEBUG Audio Lookup: Looking for audio file at: $audioPath');
+      final exists = await audioFile.exists();
+      print('DEBUG Audio Lookup: File exists: $exists');
+      
+      if (exists) {
         return audioPath;
       }
     } catch (e) {
-      print('Could not find audio file for recording $recordingId: $e');
+      print('ERROR Audio Lookup: Could not find audio file for recording $recordingId: $e');
     }
+    print('DEBUG Audio Lookup: Returning null for recording $recordingId');
     return null;
   }
 
@@ -701,15 +706,30 @@ class QdrantProfileService {
     required String profileId,
     required String recordingId,
   }) async {
+    print('DEBUG Audio: Saving audio file for recording $recordingId');
+    print('DEBUG Audio: Source file exists: ${await audioFile.exists()}');
+    print('DEBUG Audio: Source file path: ${audioFile.path}');
+    
     final appDir = await getApplicationDocumentsDirectory();
     final archiveDir = Directory('${appDir.path}/archive/profile_$profileId/audio');
     
     if (!await archiveDir.exists()) {
+      print('DEBUG Audio: Creating archive directory: ${archiveDir.path}');
       await archiveDir.create(recursive: true);
     }
     
-    final audioPath = '${archiveDir.path}/$recordingId.aac';
-    await audioFile.copy(audioPath);
+    final audioPath = '${archiveDir.path}/$recordingId.wav';
+    print('DEBUG Audio: Target file path: $audioPath');
+    
+    try {
+      await audioFile.copy(audioPath);
+      print('DEBUG Audio: Successfully copied audio file to $audioPath');
+      print('DEBUG Audio: Target file exists: ${await File(audioPath).exists()}');
+    } catch (e) {
+      print('ERROR Audio: Failed to copy audio file: $e');
+      rethrow;
+    }
+    
     return audioPath;
   }
 
