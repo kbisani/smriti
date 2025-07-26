@@ -4,7 +4,6 @@ import '../models/sub_user_profile.dart';
 import '../storage/sub_user_profile_storage.dart';
 import 'add_profile_page.dart';
 import 'profile_home_page.dart';
-import 'dart:async';
 
 class ProfileSelectionPage extends StatefulWidget {
   const ProfileSelectionPage({Key? key}) : super(key: key);
@@ -16,48 +15,11 @@ class ProfileSelectionPage extends StatefulWidget {
 class _ProfileSelectionPageState extends State<ProfileSelectionPage> {
   List<SubUserProfile> _profiles = [];
   bool _loading = true;
-  final ScrollController _scrollController = ScrollController();
-  Timer? _autoScrollTimer;
-  bool _userInteracted = false;
-
-  static const double cardWidth = 180;
-  static const double cardHeight = 240;
 
   @override
   void initState() {
     super.initState();
     _loadProfiles();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _startAutoScroll());
-  }
-
-  @override
-  void dispose() {
-    _autoScrollTimer?.cancel();
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  void _startAutoScroll() {
-    _autoScrollTimer = Timer.periodic(const Duration(milliseconds: 30), (_) {
-      if (_userInteracted) return;
-      if (!_scrollController.hasClients) return;
-      final maxScroll = _scrollController.position.maxScrollExtent;
-      final current = _scrollController.offset;
-      if (current < maxScroll) {
-        _scrollController.jumpTo((current + 0.7).clamp(0, maxScroll));
-      } else {
-        _scrollController.jumpTo(0);
-      }
-    });
-  }
-
-  void _onUserInteraction() {
-    if (!_userInteracted) {
-      setState(() {
-        _userInteracted = true;
-      });
-      _autoScrollTimer?.cancel();
-    }
   }
 
   Future<void> _loadProfiles() async {
@@ -84,122 +46,234 @@ class _ProfileSelectionPageState extends State<ProfileSelectionPage> {
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Image.asset('assets/logo.png', width: 80, height: 80),
-                const SizedBox(height: 24),
-                Text(
-                  'Welcome back 👋',
-                  style: AppTextStyles.headline.copyWith(fontSize: 36),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 40),
-                _loading
-                    ? CircularProgressIndicator()
-                    : SizedBox(
-                        height: cardHeight,
-                        child: Listener(
-                          onPointerDown: (_) => _onUserInteraction(),
-                          child: ListView.separated(
-                            controller: _scrollController,
-                            scrollDirection: Axis.horizontal,
-                            itemCount: _profiles.length + 1,
-                            separatorBuilder: (_, __) => const SizedBox(width: 36),
-                            itemBuilder: (context, index) {
-                              if (index == _profiles.length) {
-                                return GestureDetector(
-                                  onTap: _addProfile,
-                                  child: Card(
-                                    color: AppColors.card,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(28),
-                                    ),
-                                    elevation: 6,
-                                    shadowColor: AppColors.border.withOpacity(0.10),
-                                    child: SizedBox(
-                                      width: cardWidth,
-                                      child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          CircleAvatar(
-                                            radius: 54,
-                                            backgroundColor: AppColors.primary.withOpacity(0.08),
-                                            child: Icon(Icons.add, size: 54, color: AppColors.primary),
-                                          ),
-                                          const SizedBox(height: 24),
-                                          Text(
-                                            'Add',
-                                            style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600, fontSize: 20),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }
-                              final profile = _profiles[index];
-                              return GestureDetector(
-                                onTap: () async {
-                                  final result = await Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => ProfileHomePage(profile: profile),
-                                    ),
-                                  );
-                                  if (result == true) {
-                                    _loadProfiles();
-                                  }
-                                },
-                                child: Card(
-                                  color: AppColors.card,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(28),
-                                  ),
-                                  elevation: 6,
-                                  shadowColor: AppColors.border.withOpacity(0.10),
-                                  child: SizedBox(
-                                    width: cardWidth,
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        CircleAvatar(
-                                          radius: 54,
-                                          backgroundColor: AppColors.primary.withOpacity(0.08),
-                                          child: Text(
-                                            profile.initials.isNotEmpty ? profile.initials : '',
-                                            style: AppTextStyles.avatarInitials.copyWith(fontSize: 48),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 24),
-                                        Text(
-                                          profile.name,
-                                          style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600, fontSize: 20),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        if (profile.relation.isNotEmpty)
-                                          Padding(
-                                            padding: const EdgeInsets.only(top: 4.0),
-                                            child: Text(
-                                              profile.relation,
-                                              style: AppTextStyles.label,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-              ],
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Image.asset('assets/logo.png', width: 32, height: 32),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Smriti',
+                    style: AppTextStyles.headline.copyWith(fontSize: 28),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Your journal & family memory bank',
+                style: AppTextStyles.label.copyWith(fontSize: 16),
+              ),
+              const SizedBox(height: 40),
+              Expanded(
+                child: _loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _buildProfileSections(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileSections() {
+    final mainUser = _profiles.where((p) => p.relation.toLowerCase() == 'your journal').toList();
+    final familyMembers = _profiles.where((p) => p.relation.toLowerCase() != 'your journal').toList();
+    
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (mainUser.isNotEmpty) ...[
+            Text(
+              'You',
+              style: AppTextStyles.body.copyWith(
+                fontSize: 22,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildProfileCard(mainUser.first, isMainUser: true),
+            const SizedBox(height: 32),
+          ],
+          Text(
+            'Family Members',
+            style: AppTextStyles.body.copyWith(
+              fontSize: 22,
+              fontWeight: FontWeight.w600,
             ),
           ),
+          const SizedBox(height: 16),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 1.3,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+            ),
+            itemCount: familyMembers.length + 1,
+            itemBuilder: (context, index) {
+              if (index == familyMembers.length) {
+                return _buildAddProfileCard();
+              }
+              final profile = familyMembers[index];
+              return _buildProfileCard(profile);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileCard(SubUserProfile profile, {bool isMainUser = false}) {
+    return GestureDetector(
+      onTap: () async {
+        final result = await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ProfileHomePage(profile: profile),
+          ),
+        );
+        if (result == true) {
+          _loadProfiles();
+        }
+      },
+      child: Container(
+        width: isMainUser ? double.infinity : null,
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isMainUser 
+                ? AppColors.primary.withOpacity(0.3)
+                : AppColors.border.withOpacity(0.1)
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.border.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(isMainUser ? 24 : 12),
+          child: isMainUser 
+              ? Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 32,
+                      backgroundColor: AppColors.primary.withOpacity(0.15),
+                      child: Text(
+                        profile.initials.isNotEmpty ? profile.initials : '',
+                        style: AppTextStyles.avatarInitials.copyWith(fontSize: 24),
+                      ),
+                    ),
+                    const SizedBox(width: 20),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            profile.name,
+                            style: AppTextStyles.body.copyWith(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 18,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Your personal journal',
+                            style: AppTextStyles.label.copyWith(fontSize: 14),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                )
+              : Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircleAvatar(
+                      radius: 24,
+                      backgroundColor: AppColors.primary.withOpacity(0.1),
+                      child: Text(
+                        profile.initials.isNotEmpty ? profile.initials : '',
+                        style: AppTextStyles.avatarInitials.copyWith(fontSize: 18),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Flexible(
+                      child: Text(
+                        profile.name,
+                        style: AppTextStyles.body.copyWith(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (profile.relation.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Flexible(
+                        child: Text(
+                          profile.relation,
+                          style: AppTextStyles.label.copyWith(fontSize: 12),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAddProfileCard() {
+    return GestureDetector(
+      onTap: _addProfile,
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: AppColors.primary.withOpacity(0.3),
+            style: BorderStyle.solid,
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.add_rounded,
+              size: 32,
+              color: AppColors.primary.withOpacity(0.7),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Add Family\nMember',
+              style: AppTextStyles.body.copyWith(
+                color: AppColors.primary.withOpacity(0.8),
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
       ),
     );

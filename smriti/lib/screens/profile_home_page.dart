@@ -70,17 +70,21 @@ class _ProfileHomePageState extends State<ProfileHomePage> with WidgetsBindingOb
 
   void _refreshHomeData() {
     print('DEBUG: Refreshing home page data');
-    setState(() {
-      _quickStatsKey = UniqueKey();
-      _storyContinuationKey = UniqueKey();
-      _recentActivityKey = UniqueKey();
-    });
+    if (mounted) {
+      setState(() {
+        _quickStatsKey = UniqueKey();
+        _storyContinuationKey = UniqueKey();
+        _recentActivityKey = UniqueKey();
+      });
+    }
   }
 
 
   void _onNavTap(int index) {
     final previousIndex = _selectedIndex;
-    setState(() => _selectedIndex = index);
+    if (mounted) {
+      setState(() => _selectedIndex = index);
+    }
     _pageController.animateToPage(
       index,
       duration: const Duration(milliseconds: 400),
@@ -91,7 +95,9 @@ class _ProfileHomePageState extends State<ProfileHomePage> with WidgetsBindingOb
     if (index == 0 && previousIndex == 1) {
       print('DEBUG: Returning to home tab from record tab - refreshing data');
       Future.delayed(const Duration(milliseconds: 500), () {
-        _refreshHomeData();
+        if (mounted) {
+          _refreshHomeData();
+        }
       });
     }
   }
@@ -109,10 +115,12 @@ class _ProfileHomePageState extends State<ProfileHomePage> with WidgetsBindingOb
     if (result == true) {
       final updated = await SubUserProfileStorage().getProfiles();
       final newProfile = updated.firstWhere((p) => p.id == _profile.id, orElse: () => _profile);
-      setState(() {
-        _profile = newProfile;
-        _edited = true;
-      });
+      if (mounted) {
+        setState(() {
+          _profile = newProfile;
+          _edited = true;
+        });
+      }
     }
   }
 
@@ -140,10 +148,12 @@ class _ProfileHomePageState extends State<ProfileHomePage> with WidgetsBindingOb
         );
       }
       
-      setState(() {
-        _currentPrompt = initialPrompt;
-        _usedPrompts.add(initialPrompt);
-      });
+      if (mounted) {
+        setState(() {
+          _currentPrompt = initialPrompt;
+          _usedPrompts.add(initialPrompt);
+        });
+      }
     } catch (e) {
       print('Error loading initial prompt: $e');
       // Keep default prompt
@@ -151,7 +161,9 @@ class _ProfileHomePageState extends State<ProfileHomePage> with WidgetsBindingOb
   }
 
   Future<void> _regeneratePrompt() async {
-    setState(() { _regenLoading = true; });
+    if (mounted) {
+      setState(() { _regenLoading = true; });
+    }
     
     try {
       final recordings = await _profileService.getAllRecordings(_profile.id);
@@ -163,16 +175,20 @@ class _ProfileHomePageState extends State<ProfileHomePage> with WidgetsBindingOb
         usedCategories: _getUsedCategories(recordings),
       );
       
-      setState(() {
-        _currentPrompt = newPrompt;
-        _usedPrompts.add(newPrompt);
-        _regenLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _currentPrompt = newPrompt;
+          _usedPrompts.add(newPrompt);
+          _regenLoading = false;
+        });
+      }
     } catch (e) {
       print('Error regenerating prompt: $e');
-      setState(() {
-        _regenLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _regenLoading = false;
+        });
+      }
     }
   }
   
@@ -1087,7 +1103,11 @@ class _ProfileHomePageState extends State<ProfileHomePage> with WidgetsBindingOb
         child: PageView(
           controller: _pageController,
           physics: const NeverScrollableScrollPhysics(),
-          onPageChanged: (index) => setState(() => _selectedIndex = index),
+          onPageChanged: (index) {
+            if (mounted) {
+              setState(() => _selectedIndex = index);
+            }
+          },
           children: [
             // Home Tab - Modern Dashboard
             _buildDashboardHome(),
