@@ -649,6 +649,52 @@ class QdrantProfileService {
     await _qdrant.deleteEventByUuid(uuid);
   }
 
+  /// Delete all data for a profile (recordings, events, and profile)
+  Future<void> deleteAllProfileData(String profileId) async {
+    print('Deleting all data for profile: $profileId');
+    try {
+      // Get all recordings for this profile
+      final recordings = await getAllRecordings(profileId);
+      
+      // Delete each recording
+      for (final recording in recordings) {
+        final uuid = recording['uuid'] as String?;
+        if (uuid != null) {
+          await deleteRecording(uuid);
+        }
+      }
+      
+      // Get all events for this profile
+      final events = await _qdrant.getEventsByProfile(profileId);
+      
+      // Delete each event
+      for (final event in events) {
+        final uuid = event['payload']?['uuid'] as String?;
+        if (uuid != null) {
+          await deleteEvent(uuid);
+        }
+      }
+      
+      // Delete the profile itself from user_profiles collection
+      await _qdrant.deleteProfileById(profileId);
+      
+      // Delete related data by filtering on profile_id in other collections
+      await _qdrant.deletePointsByFilter({
+        'must': [
+          {
+            'key': 'profile_id',
+            'match': {'value': profileId}
+          }
+        ]
+      });
+      
+      print('Successfully deleted all data for profile: $profileId');
+    } catch (e) {
+      print('Error deleting profile data: $e');
+      rethrow;
+    }
+  }
+
   /// Save audio file (still needed for file storage)
   Future<String> saveAudioToArchive({
     required File audioFile,

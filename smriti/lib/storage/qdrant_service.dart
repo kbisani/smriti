@@ -457,6 +457,45 @@ class QdrantService {
     await deletePoint(_recordingsCollection, uuid);
   }
 
+  /// Delete profile by profile ID
+  Future<void> deleteProfileById(String profileId) async {
+    await deletePoint(_profilesCollection, profileId);
+  }
+
+  /// Delete points by filter across collections (excluding profiles collection)
+  Future<void> deletePointsByFilter(Map<String, dynamic> filter) async {
+    final collections = [
+      _memoriesCollection,
+      _eventsCollection,
+      _relationshipsCollection,
+      _recordingsCollection,
+    ];
+
+    for (final collection in collections) {
+      try {
+        final url = Uri.parse('$baseUrl/collections/$collection/points/delete');
+        final response = await http.post(
+          url,
+          headers: {
+            'Content-Type': 'application/json',
+            'api-key': apiKey,
+          },
+          body: jsonEncode({
+            'filter': filter,
+          }),
+        );
+
+        if (response.statusCode != 200) {
+          print('Warning: Failed to delete points from $collection: ${response.body}');
+        } else {
+          print('Successfully deleted points from $collection');
+        }
+      } catch (e) {
+        print('Error deleting points from $collection: $e');
+      }
+    }
+  }
+
 }
 
 /// Example usage:

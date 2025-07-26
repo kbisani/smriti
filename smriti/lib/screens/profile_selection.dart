@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme.dart';
 import '../models/sub_user_profile.dart';
 import '../storage/sub_user_profile_storage.dart';
+import '../storage/qdrant_profile_service.dart';
 import 'add_profile_page.dart';
 import 'profile_home_page.dart';
 
@@ -37,6 +38,162 @@ class _ProfileSelectionPageState extends State<ProfileSelectionPage> {
     );
     if (result == true) {
       _loadProfiles();
+    }
+  }
+
+  void _showProfileOptions(SubUserProfile profile) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.border.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 24,
+                    backgroundColor: AppColors.primary.withOpacity(0.1),
+                    child: Text(
+                      profile.initials,
+                      style: AppTextStyles.avatarInitials.copyWith(fontSize: 18),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          profile.name,
+                          style: AppTextStyles.body.copyWith(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 18,
+                          ),
+                        ),
+                        if (profile.relation.isNotEmpty)
+                          Text(
+                            profile.relation,
+                            style: AppTextStyles.label,
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 32),
+            ListTile(
+              leading: Icon(Icons.delete_outline, color: Colors.red[600]),
+              title: Text(
+                'Delete Profile',
+                style: AppTextStyles.body.copyWith(
+                  color: Colors.red[600],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              subtitle: Text(
+                'This will permanently delete all memories and data',
+                style: AppTextStyles.label.copyWith(fontSize: 12),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                _confirmDeleteProfile(profile);
+              },
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteProfile(SubUserProfile profile) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Delete Profile',
+          style: AppTextStyles.body.copyWith(
+            fontWeight: FontWeight.w600,
+            fontSize: 18,
+          ),
+        ),
+        content: Text(
+          'Are you sure you want to delete ${profile.name}?\n\nThis will permanently delete all memories, recordings, and data associated with this profile. This action cannot be undone.',
+          style: AppTextStyles.body,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cancel',
+              style: AppTextStyles.body.copyWith(color: AppColors.textPrimary),
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _deleteProfile(profile);
+            },
+            child: Text(
+              'Delete',
+              style: AppTextStyles.body.copyWith(
+                color: Colors.red[600],
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteProfile(SubUserProfile profile) async {
+    try {
+      // Delete from both local storage and Qdrant database
+      await SubUserProfileStorage().deleteProfile(profile.id);
+      
+      // Also clean up all Qdrant data for this profile
+      final qdrantService = QdrantProfileService();
+      await qdrantService.deleteAllProfileData(profile.id);
+      
+      _loadProfiles();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${profile.name} has been deleted completely'),
+            backgroundColor: AppColors.primary,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error deleting profile: $e'),
+            backgroundColor: Colors.red[600],
+          ),
+        );
+      }
     }
   }
 
@@ -142,6 +299,7 @@ class _ProfileSelectionPageState extends State<ProfileSelectionPage> {
           _loadProfiles();
         }
       },
+      onLongPress: () => _showProfileOptions(profile),
       child: Container(
         width: isMainUser ? double.infinity : null,
         decoration: BoxDecoration(
