@@ -4,12 +4,98 @@ import '../theme.dart';
 import 'add_profile_page.dart';
 import '../utils/test_data_importer.dart';
 import '../storage/qdrant_profile_service.dart';
+import '../services/pdf_export_service.dart';
+import 'package:printing/printing.dart';
+import 'package:pdf/pdf.dart';
 
 class ProfilePage extends StatelessWidget {
   final SubUserProfile profile;
   
   const ProfilePage({Key? key, required this.profile}) : super(key: key);
   
+  Future<void> _exportMemoryBook(BuildContext context) async {
+    // Show confirmation dialog first
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Export Memory Book'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Create a beautiful PDF book with:'),
+            const SizedBox(height: 12),
+            Text('• Complete timeline and stories'),
+            Text('• Memory statistics and graphs'),
+            Text('• All sessions and details'),
+            Text('• Beautiful formatting for printing'),
+            const SizedBox(height: 12),
+            Text('This may take a few moments to generate.', 
+                 style: TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text('Export'),
+          ),
+        ],
+      ),
+    );
+    
+    if (confirmed != true) return;
+    
+    // Show loading dialog
+    if (!context.mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text('Creating your memory book...'),
+            const SizedBox(height: 8),
+            Text('This may take a moment', 
+                 style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+          ],
+        ),
+      ),
+    );
+    
+    try {
+      final pdfFile = await PDFExportService.exportTimelineAndGraphs(profile);
+      
+      if (!context.mounted) return;
+      Navigator.of(context).pop(); // Close loading dialog
+      
+      // Show the PDF
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => pdfFile.readAsBytes(),
+        name: '${profile.name}_memories.pdf',
+      );
+      
+    } catch (e) {
+      if (!context.mounted) return;
+      Navigator.of(context).pop(); // Close loading dialog
+      
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Export failed: ${e.toString()}'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 5),
+        ),
+      );
+    }
+  }
+
   Future<void> _importTestData(BuildContext context) async {
     // Show confirmation dialog first
     final confirmed = await showDialog<bool>(
@@ -341,6 +427,70 @@ class ProfilePage extends StatelessWidget {
                           ),
                         ),
                       ],
+                    ),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(height: 24),
+              
+              // Export Memory Book
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.green.withOpacity(0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.picture_as_pdf, color: Colors.green[700], size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Memory Book Export',
+                          style: AppTextStyles.headline.copyWith(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.green[700],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Create a beautiful PDF book with your complete memory collection',
+                      style: AppTextStyles.body.copyWith(
+                        fontSize: 14,
+                        color: Colors.green[800],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () => _exportMemoryBook(context),
+                        icon: Icon(Icons.download, size: 18),
+                        label: Text('Export PDF Memory Book'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green[600],
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '• Timeline with all stories\\n• Beautiful graphs and statistics\\n• Print-ready formatting',
+                      style: AppTextStyles.label.copyWith(
+                        fontSize: 12,
+                        color: Colors.green[700],
+                      ),
                     ),
                   ],
                 ),
