@@ -132,6 +132,67 @@ class _ProfileHomePageState extends State<ProfileHomePage> with WidgetsBindingOb
     }
   }
 
+  /// Get all anchor stories for continuation (including undated ones)
+  Future<List<Map<String, dynamic>>> _getAllStoriesForContinuation() async {
+    try {
+      // Get all recordings
+      final allRecordings = await _profileService.getAllRecordings(_profile.id);
+      
+      // Filter for anchor stories only
+      final anchorRecordings = allRecordings.where((recording) {
+        final isContinuation = recording['is_continuation'] == true;
+        final hasContent = recording['summary']?.toString().isNotEmpty == true || 
+                          recording['personalized_summary']?.toString().isNotEmpty == true;
+        return !isContinuation && hasContent;
+      }).toList();
+      
+      // Count continuations for each anchor story
+      final sessionCounts = <String, int>{};
+      for (final recording in allRecordings) {
+        final originalUuid = recording['original_story_uuid']?.toString();
+        final isContinuation = recording['is_continuation'] == true;
+        
+        if (isContinuation && originalUuid != null) {
+          sessionCounts[originalUuid] = (sessionCounts[originalUuid] ?? 1) + 1;
+        }
+      }
+      
+      // Convert to story format with correct session counts
+      final anchorStories = <Map<String, dynamic>>[];
+      final seenUuids = <String>{};
+      
+      for (final recording in anchorRecordings) {
+        final uuid = recording['uuid']?.toString();
+        if (uuid != null && !seenUuids.contains(uuid)) {
+          final sessionCount = sessionCounts[uuid] ?? 1; // Default to 1 if no continuations
+          
+          final story = {
+            'uuid': uuid,
+            'summary': recording['summary'] ?? recording['personalized_summary'],
+            'personalized_summary': recording['personalized_summary'],
+            'year': recording['year']?.toString(),
+            'session_count': sessionCount,
+            'date': recording['date'],
+            'categories': recording['categories'],
+            'prompt': recording['prompt'],
+            'transcript': recording['transcript'],
+          };
+          
+          anchorStories.add(story);
+          seenUuids.add(uuid);
+          
+          print('DEBUG: Anchor story $uuid has $sessionCount sessions');
+        }
+      }
+      
+      print('DEBUG: Found ${anchorStories.length} unique anchor stories for continuation');
+      return anchorStories;
+    } catch (e) {
+      print('Error getting stories for continuation: $e');
+      return [];
+    }
+  }
+
   Future<void> _loadInitialPrompt() async {
     try {
       final recordings = await _profileService.getAllRecordings(_profile.id);
@@ -759,14 +820,14 @@ class _ProfileHomePageState extends State<ProfileHomePage> with WidgetsBindingOb
   }
 
   Widget _buildStoryContinuationSection() {
-    return FutureBuilder<Map<int, List<Map<String, dynamic>>>>(
+    return FutureBuilder<List<Map<String, dynamic>>>(
       key: _storyContinuationKey,
-      future: _profileService.getTimelineData(_profile.id),
+      future: _getAllStoriesForContinuation(),
       builder: (context, snapshot) {
         print('DEBUG: Story continuation snapshot state: ${snapshot.connectionState}');
         
         if (snapshot.hasError) {
-          print('DEBUG: Error loading timeline stories: ${snapshot.error}');
+          print('DEBUG: Error loading stories for continuation: ${snapshot.error}');
           return const SizedBox.shrink();
         }
         
@@ -774,12 +835,7 @@ class _ProfileHomePageState extends State<ProfileHomePage> with WidgetsBindingOb
           return const SizedBox.shrink();
         }
         
-        // Extract all stories from timeline data and filter expandable ones
-        final timelineData = snapshot.data!;
-        final allStories = <Map<String, dynamic>>[];
-        for (final yearStories in timelineData.values) {
-          allStories.addAll(yearStories);
-        }
+        final allStories = snapshot.data!;
         
         // Filter for stories that can be expanded (have sessions and content)
         final expandableStories = allStories.where((story) {
@@ -795,7 +851,9 @@ class _ProfileHomePageState extends State<ProfileHomePage> with WidgetsBindingOb
           return const SizedBox.shrink();
         }
 
-        final limitedStories = expandableStories.take(3).toList(); // Show top 3
+        // Randomly select 3 stories to display
+        expandableStories.shuffle();
+        final limitedStories = expandableStories.take(3).toList();
         print('DEBUG: Showing ${limitedStories.length} expandable stories');
         
         // Debug: Print session counts for verification
@@ -809,12 +867,32 @@ class _ProfileHomePageState extends State<ProfileHomePage> with WidgetsBindingOb
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Continue Your Stories',
-              style: AppTextStyles.headline.copyWith(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Continue Your Stories',
+                  style: AppTextStyles.headline.copyWith(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(
+                    Icons.refresh_rounded,
+                    color: AppColors.primary,
+                    size: 20,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _storyContinuationKey = UniqueKey();
+                    });
+                  },
+                  tooltip: 'Show different stories',
+                  padding: EdgeInsets.zero,
+                  constraints: BoxConstraints(),
+                ),
+              ],
             ),
             const SizedBox(height: 12),
             Container(

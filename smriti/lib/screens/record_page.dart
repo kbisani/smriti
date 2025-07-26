@@ -409,170 +409,412 @@ class _RecordPageState extends State<RecordPage> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: widget.isStoryContinuation ? AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: AppColors.textPrimary),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(
-          'Continue Story',
-          style: AppTextStyles.headline.copyWith(fontSize: 18),
-        ),
-        centerTitle: true,
-      ) : null,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+        child: SingleChildScrollView(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              SizedBox(height: widget.isStoryContinuation ? 16 : 32),
+              // Header
+              _buildHeader(),
               
-              // Show story context for continuations
-              _buildStoryContext(),
-              
-              Text(
-                widget.prompt,
-                style: AppTextStyles.body.copyWith(fontSize: 18, fontWeight: FontWeight.w500),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 32),
-              GestureDetector(
-                onTap: _isRecording ? _stopRecording : _startRecording,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  width: _isRecording ? 100 : 80,
-                  height: _isRecording ? 100 : 80,
-                  decoration: BoxDecoration(
-                    color: _isRecording ? Colors.redAccent : AppColors.primary,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      if (_isRecording)
-                        BoxShadow(
-                          color: Colors.redAccent.withOpacity(0.3),
-                          blurRadius: 24,
-                          spreadRadius: 4,
-                        ),
-                    ],
-                  ),
-                  child: Icon(
-                    _isRecording ? Icons.stop : Icons.mic,
-                    color: Colors.white,
-                    size: 40,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 32),
-              
-              // Use Expanded to prevent overflow
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppColors.card,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        width: double.infinity,
-                child: _isTranscribing
-                    ? Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                          const SizedBox(width: 16),
-                          Text('Transcribing...', style: AppTextStyles.body),
-                        ],
-                      )
-                    : _transcription.isEmpty
-                        ? Text('Transcription will appear here...', style: AppTextStyles.body.copyWith(fontSize: 16))
-                        : _isEditingTranscript
-                            ? Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  TextField(
-                                    controller: _transcriptController,
-                                    maxLines: null, // Allow unlimited lines
-                                    minLines: 3,
-                                    onChanged: (val) => _editableTranscript = val,
-                                    decoration: InputDecoration(
-                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                      contentPadding: EdgeInsets.all(12),
-                                    ),
-                                  ),
-                                  SizedBox(height: 16),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.end,
-                                    children: [
-                                      TextButton(
-                                        onPressed: _cancelEditTranscript,
-                                        child: Text('Cancel', style: AppTextStyles.label),
-                                      ),
-                                      SizedBox(width: 12),
-                                      ElevatedButton(
-                                        onPressed: _saveReviewedTranscript,
-                                        child: Text('Save'),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              )
-                            : Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(_editableTranscript, style: AppTextStyles.body.copyWith(fontSize: 16)),
-                                  SizedBox(height: 16),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.end,
-                                    children: [
-                                      ElevatedButton(
-                                        onPressed: () => setState(() => _isEditingTranscript = true),
-                                        child: Text('Edit'),
-                                      ),
-                                      SizedBox(width: 12),
-                                      ElevatedButton(
-                                        onPressed: _saveReviewedTranscript,
-                                        child: Text('Save'),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                      ),
-                      if (_audioPath != null && !_isRecording && !_isTranscribing)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 12.0),
-                          child: Text('Audio saved: $_audioPath', style: AppTextStyles.label),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-              if (_isRecording)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              // Main content
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 16.0),
+                child: Column(
                   children: [
-                    OutlinedButton(
-                      onPressed: _cancelRecording,
-                      child: Text('Cancel'),
-                    ),
-                    ElevatedButton(
-                      onPressed: _stopRecording,
-                      child: Text('Save'),
-                    ),
+                    // Story context for continuations
+                    _buildStoryContext(),
+                    
+                    // Prompt section
+                    _buildPromptSection(),
+                    
+                    const SizedBox(height: 32),
+                    
+                    // Recording button
+                    _buildRecordingButton(),
+                    
+                    const SizedBox(height: 32),
+                    
+                    // Transcription section
+                    _buildTranscriptionSection(),
+                    
+                    const SizedBox(height: 20),
+                    
+                    // Action buttons
+                    _buildActionButtons(),
+                    
+                    const SizedBox(height: 20),
                   ],
                 ),
+              ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Widget _buildHeader() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            widget.isStoryContinuation ? 'Continue Story' : 'New Memory',
+            style: AppTextStyles.body.copyWith(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          if (widget.isStoryContinuation)
+            Text(
+              'Adding to existing story',
+              style: AppTextStyles.label.copyWith(fontSize: 14),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPromptSection() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.primary.withOpacity(0.1)),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.lightbulb_outline_rounded,
+            color: AppColors.primary,
+            size: 28,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            widget.prompt,
+            style: AppTextStyles.body.copyWith(
+              fontSize: 16,
+              height: 1.5,
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecordingButton() {
+    return GestureDetector(
+      onTap: _isRecording ? _stopRecording : _startRecording,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        width: _isRecording ? 120 : 100,
+        height: _isRecording ? 120 : 100,
+        decoration: BoxDecoration(
+          color: _isRecording ? Colors.red : AppColors.primary,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: (_isRecording ? Colors.red : AppColors.primary).withOpacity(0.3),
+              blurRadius: _isRecording ? 30 : 20,
+              spreadRadius: _isRecording ? 8 : 4,
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              _isRecording ? Icons.stop_rounded : Icons.mic_rounded,
+              color: Colors.white,
+              size: _isRecording ? 48 : 40,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              _isRecording ? 'Stop' : 'Record',
+              style: AppTextStyles.label.copyWith(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTranscriptionSection() {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border.withOpacity(0.1)),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: _transcription.isEmpty && !_isTranscribing
+            ? _buildEmptyState()
+            : _isTranscribing
+                ? _buildTranscribingState()
+                : _isEditingTranscript
+                    ? _buildEditingState()
+                    : _buildReadyState(),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Container(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.article_outlined,
+            size: 48,
+            color: AppColors.textSecondary,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Your story will appear here after recording',
+            style: AppTextStyles.body.copyWith(
+              color: AppColors.textSecondary,
+              fontSize: 16,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTranscribingState() {
+    return Container(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 32,
+            height: 32,
+            child: CircularProgressIndicator(
+              strokeWidth: 3,
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'Converting your voice to text...',
+            style: AppTextStyles.body.copyWith(fontSize: 16),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'This may take a moment',
+            style: AppTextStyles.label,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEditingState() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.edit_rounded, size: 20, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Text(
+                'Edit your story',
+                style: AppTextStyles.body.copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _transcriptController,
+            maxLines: 6,
+            onChanged: (val) => _editableTranscript = val,
+            style: AppTextStyles.body.copyWith(height: 1.5),
+            decoration: InputDecoration(
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: AppColors.border),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: AppColors.primary),
+              ),
+              contentPadding: const EdgeInsets.all(16),
+              hintText: 'Your story...',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReadyState() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.check_circle_outline, size: 20, color: Colors.green),
+              const SizedBox(width: 8),
+              Text(
+                'Your story',
+                style: AppTextStyles.body.copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            _editableTranscript,
+            style: AppTextStyles.body.copyWith(
+              fontSize: 16,
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButtons() {
+    if (_isRecording) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 24),
+        child: Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: _cancelRecording,
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text(
+                  'Cancel',
+                  style: AppTextStyles.body.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: _stopRecording,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text(
+                  'Finish',
+                  style: AppTextStyles.body.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_transcription.isNotEmpty) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 24),
+        child: Row(
+          children: [
+            if (!_isEditingTranscript) ...[
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => setState(() => _isEditingTranscript = true),
+                  icon: Icon(Icons.edit_rounded, size: 18),
+                  label: Text('Edit'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+            ],
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: _isEditingTranscript ? _saveReviewedTranscript : _saveReviewedTranscript,
+                icon: Icon(
+                  _isEditingTranscript ? Icons.check_rounded : Icons.bookmark_rounded,
+                  size: 18,
+                  color: Colors.white,
+                ),
+                label: Text(
+                  _isEditingTranscript ? 'Save Changes' : 'Save Memory',
+                  style: AppTextStyles.body.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+            if (_isEditingTranscript) ...[
+              const SizedBox(width: 16),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _cancelEditTranscript,
+                  child: Text('Cancel'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+
+    return const SizedBox.shrink();
   }
 }
