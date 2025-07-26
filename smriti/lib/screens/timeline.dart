@@ -58,9 +58,11 @@ class _TimelinePageState extends State<TimelinePage> with SingleTickerProviderSt
   late final TabController _tabController;
   late final QdrantProfileService _profileService;
 
-  static const List<String> _predefinedCategories = [
-    'love', 'family', 'career', 'wisdom', 'friends', 'education', 'health', 'adventure', 'loss', 'growth'
-  ];
+
+  // Filter states
+  int? _selectedYear;
+  int? _minSessionCount;
+  bool _showFilters = false;
 
   @override
   void initState() {
@@ -118,7 +120,10 @@ class _TimelinePageState extends State<TimelinePage> with SingleTickerProviderSt
       final Map<String, List<_MosaicStory>> byCategory = {};
       
       // Initialize categories
-      for (var c in _predefinedCategories) {
+      const predefinedCategories = [
+        'love', 'family', 'career', 'wisdom', 'friends', 'education', 'health', 'adventure', 'loss', 'growth'
+      ];
+      for (var c in predefinedCategories) {
         byCategory[c] = [];
       }
       
@@ -142,7 +147,10 @@ class _TimelinePageState extends State<TimelinePage> with SingleTickerProviderSt
       return byCategory;
     } catch (e) {
       print('Error loading mosaic stories: $e');
-      return { for (var c in _predefinedCategories) c: <_MosaicStory>[] };
+      const predefinedCategories = [
+        'love', 'family', 'career', 'wisdom', 'friends', 'education', 'health', 'adventure', 'loss', 'growth'
+      ];
+      return { for (var c in predefinedCategories) c: <_MosaicStory>[] };
     }
   }
 
@@ -177,93 +185,63 @@ class _TimelinePageState extends State<TimelinePage> with SingleTickerProviderSt
                   controller: _tabController,
                   children: [
                     // Timeline Tab
-                    FutureBuilder<Map<int, List<_TimelineEntry>>>(
-                      future: _loadTimelineEntries(),
-                      builder: (context, snapshot) {
-                        if (!snapshot.hasData) {
-                          return Center(child: CircularProgressIndicator());
-                        }
-                        final byYear = snapshot.data!;
-                        if (byYear.isEmpty) {
-                          return Center(child: Text('No stories with a year found.', style: AppTextStyles.subhead));
-                        }
-                        final sortedYears = byYear.keys.toList()..sort((a, b) => a.compareTo(b)); // Oldest at top
-                        return ListView(
-                          children: [
-                            for (final year in sortedYears) ...[
-                              Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-                                child: Text(year.toString(), style: AppTextStyles.label.copyWith(color: AppColors.primary, fontSize: 16)),
-                              ),
-                              for (final entry in byYear[year]!)
-                                GestureDetector(
-                                  onTap: () {
-                                    if (entry.sessions != null && entry.sessions!.isNotEmpty) {
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                          builder: (context) => StorySessionsPage(
-                                            storyData: {
-                                              'sessions': entry.sessions!,
-                                              'summary': entry.summary,
-                                              'year': entry.year,
-                                              'uuid': entry.uuid,
-                                              'session_count': entry.sessionCount ?? 1,
-                                              'original_prompt': entry.originalPrompt ?? '',
-                                              'consolidated_summary': entry.consolidatedSummary,
-                                            },
-                                            profileName: widget.profile.name,
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                  },
-                                  child: Card(
-                                    color: AppColors.card,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                    elevation: 0,
-                                    margin: EdgeInsets.symmetric(vertical: 6, horizontal: 8),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(16.0),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              Expanded(
-                                                child: Text(entry.summary, style: AppTextStyles.body),
-                                              ),
-                                              if (entry.sessions != null && entry.sessions!.isNotEmpty)
-                                                Icon(Icons.arrow_forward_ios, 
-                                                    size: 16, 
-                                                    color: AppColors.textSecondary),
-                                            ],
-                                          ),
-                                          if (entry.sessionCount != null && entry.sessionCount! > 1) ...[
-                                            const SizedBox(height: 8),
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                              decoration: BoxDecoration(
-                                                color: AppColors.primary.withOpacity(0.1),
-                                                borderRadius: BorderRadius.circular(12),
-                                              ),
-                                              child: Text(
-                                                '${entry.sessionCount} sessions',
-                                                style: AppTextStyles.label.copyWith(
-                                                  color: AppColors.primary,
-                                                  fontSize: 12,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ],
-                                      ),
-                                    ),
+                    Column(
+                      children: [
+                        // Filter controls
+                        _buildFilterControls(),
+                        
+                        // Timeline content
+                        Expanded(
+                          child: FutureBuilder<Map<int, List<_TimelineEntry>>>(
+                            future: _loadTimelineEntries(),
+                            builder: (context, snapshot) {
+                              if (!snapshot.hasData) {
+                                return Center(child: CircularProgressIndicator());
+                              }
+                              final byYear = snapshot.data!;
+                              if (byYear.isEmpty) {
+                                return Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.timeline, size: 64, color: AppColors.textSecondary),
+                                      const SizedBox(height: 16),
+                                      Text('No dated stories found', style: AppTextStyles.subhead),
+                                      const SizedBox(height: 8),
+                                      Text('Add year information to stories to see them here', 
+                                           style: AppTextStyles.label),
+                                    ],
                                   ),
-                                ),
-                            ]
-                          ],
-                        );
-                      },
+                                );
+                              }
+                              
+                              // Apply filters
+                              final filteredByYear = _applyFilters(byYear);
+                              final years = filteredByYear.keys.toList()..sort((a, b) => b.compareTo(a));
+                              
+                              if (years.isEmpty) {
+                                return Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.filter_list_off, size: 64, color: AppColors.textSecondary),
+                                      const SizedBox(height: 16),
+                                      Text('No stories match your filters', style: AppTextStyles.subhead),
+                                      const SizedBox(height: 8),
+                                      TextButton(
+                                        onPressed: _clearFilters,
+                                        child: Text('Clear filters'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }
+                              
+                              return _buildVisualTimeline(filteredByYear, years);
+                            },
+                          ),
+                        ),
+                      ],
                     ),
                     // Graph Tab
                     Center(
@@ -277,7 +255,10 @@ class _TimelinePageState extends State<TimelinePage> with SingleTickerProviderSt
                           return Center(child: CircularProgressIndicator());
                         }
                         final byCategory = snapshot.data!;
-                        final categoriesWithStories = _predefinedCategories.where((cat) => byCategory[cat]!.isNotEmpty).toList();
+                        const predefinedCategories = [
+                          'love', 'family', 'career', 'wisdom', 'friends', 'education', 'health', 'adventure', 'loss', 'growth'
+                        ];
+                        final categoriesWithStories = predefinedCategories.where((cat) => byCategory[cat]!.isNotEmpty).toList();
                         if (categoriesWithStories.isEmpty) {
                           return Center(child: Text('No stories with categories found.', style: AppTextStyles.subhead));
                         }
@@ -339,6 +320,352 @@ class _TimelinePageState extends State<TimelinePage> with SingleTickerProviderSt
         ),
       ),
     );
+  }
+
+  // Filter Controls
+  Widget _buildFilterControls() {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      height: _showFilters ? null : 60,
+      child: Column(
+        children: [
+          // Filter toggle row
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${widget.profile.name}\'s Timeline',
+                  style: AppTextStyles.headline.copyWith(fontSize: 20),
+                ),
+              ),
+              IconButton(
+                icon: Icon(
+                  _showFilters ? Icons.filter_list : Icons.filter_list_outlined,
+                  color: (_selectedYear != null || _minSessionCount != null) 
+                      ? AppColors.primary : AppColors.textSecondary,
+                ),
+                onPressed: () => setState(() => _showFilters = !_showFilters),
+                tooltip: 'Filter stories',
+              ),
+            ],
+          ),
+          
+          // Expandable filter options
+          if (_showFilters) ...[ 
+            const Divider(),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                // Year filter  
+                ChoiceChip(
+                  label: Text(_selectedYear?.toString() ?? 'All Years'),
+                  selected: _selectedYear != null,
+                  onSelected: (selected) {
+                    if (selected) {
+                      _showYearPicker();
+                    } else {
+                      setState(() => _selectedYear = null);
+                    }
+                  },
+                ),
+                
+                // Session count filter
+                ChoiceChip(
+                  label: Text(_minSessionCount != null ? '${_minSessionCount}+ sessions' : 'All Sessions'),
+                  selected: _minSessionCount != null,
+                  onSelected: (selected) {
+                    if (selected) {
+                      setState(() => _minSessionCount = 2);
+                    } else {
+                      setState(() => _minSessionCount = null);
+                    }
+                  },
+                ),
+                
+                // Clear filters
+                if (_selectedYear != null || _minSessionCount != null)
+                  ActionChip(
+                    label: Text('Clear All'),
+                    onPressed: _clearFilters,
+                    backgroundColor: Colors.red.withOpacity(0.1),
+                    labelStyle: TextStyle(color: Colors.red[700]),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // Visual Timeline Builder
+  Widget _buildVisualTimeline(Map<int, List<_TimelineEntry>> filteredByYear, List<int> years) {
+    return ListView.builder(
+      padding: const EdgeInsets.only(left: 32, right: 16, top: 16),
+      itemCount: years.length,
+      itemBuilder: (context, index) {
+        final year = years[index];
+        final entries = filteredByYear[year]!;
+        final isLastYear = index == years.length - 1;
+        
+        return IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Timeline line and year marker
+              SizedBox(
+                width: 80,
+                child: Column(
+                  children: [
+                    // Year bubble
+                    Container(
+                      width: 60,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          year.toString(),
+                          style: AppTextStyles.body.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                    
+                    // Timeline line
+                    if (!isLastYear)
+                      Expanded(
+                        child: Container(
+                          width: 3,
+                          margin: const EdgeInsets.symmetric(vertical: 8),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                AppColors.primary,
+                                AppColors.primary.withOpacity(0.3),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              
+              // Stories for this year
+              Expanded(
+                child: Column(
+                  children: entries.map((entry) => _buildTimelineStoryCard(entry)).toList(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // Enhanced Story Card
+  Widget _buildTimelineStoryCard(_TimelineEntry entry) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      child: GestureDetector(
+        onTap: () => _navigateToStory(entry),
+        child: Card(
+          elevation: 4,
+          shadowColor: AppColors.border.withOpacity(0.3),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppColors.card,
+                  AppColors.card.withOpacity(0.8),
+                ],
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Story summary
+                Text(
+                  entry.summary,
+                  style: AppTextStyles.body.copyWith(
+                    fontSize: 16,
+                    height: 1.4,
+                  ),
+                ),
+                
+                const SizedBox(height: 16),
+                
+                // Metadata row
+                Row(
+                  children: [
+                    // Session count badge
+                    if (entry.sessionCount != null && entry.sessionCount! > 1)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.layers, size: 14, color: AppColors.primary),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${entry.sessionCount} sessions',
+                              style: AppTextStyles.label.copyWith(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    
+                    const Spacer(),
+                    
+                    // Navigation arrow
+                    if (entry.sessions != null && entry.sessions!.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.arrow_forward_ios,
+                          size: 14,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Helper Methods
+  Map<int, List<_TimelineEntry>> _applyFilters(Map<int, List<_TimelineEntry>> byYear) {
+    if (_selectedYear == null && _minSessionCount == null) {
+      return byYear;
+    }
+    
+    final filtered = <int, List<_TimelineEntry>>{};
+    
+    byYear.forEach((year, entries) {
+      if (_selectedYear != null && year != _selectedYear) return;
+      
+      final filteredEntries = entries.where((entry) {
+        // Session count filter
+        if (_minSessionCount != null) {
+          final sessionCount = entry.sessionCount ?? 1;
+          if (sessionCount < _minSessionCount!) return false;
+        }
+        
+        return true;
+      }).toList();
+      
+      if (filteredEntries.isNotEmpty) {
+        filtered[year] = filteredEntries;
+      }
+    });
+    
+    return filtered;
+  }
+
+  void _clearFilters() {
+    setState(() {
+      _selectedYear = null;
+      _minSessionCount = null;
+    });
+  }
+
+
+  void _showYearPicker() async {
+    final timelineData = await _loadTimelineEntries();
+    final years = timelineData.keys.toList()..sort();
+    
+    if (!mounted) return;
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Select Year'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView(
+            shrinkWrap: true,
+            children: years.map((year) {
+              return ListTile(
+                title: Text(year.toString()),
+                onTap: () {
+                  setState(() => _selectedYear = year);
+                  Navigator.pop(context);
+                },
+                selected: _selectedYear == year,
+              );
+            }).toList(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _navigateToStory(_TimelineEntry entry) {
+    if (entry.sessions != null && entry.sessions!.isNotEmpty) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => StorySessionsPage(
+            storyData: {
+              'sessions': entry.sessions!,
+              'summary': entry.summary,
+              'year': entry.year,
+              'uuid': entry.uuid,
+              'session_count': entry.sessionCount ?? 1,
+              'original_prompt': entry.originalPrompt ?? '',
+              'consolidated_summary': entry.consolidatedSummary,
+            },
+            profileName: widget.profile.name,
+          ),
+        ),
+      );
+    }
   }
 }
 
