@@ -1,0 +1,488 @@
+{
+  "profile_id": "d1f4101e-9883-4ec7-90f4-dc2b69b21c34",
+  "total_memories": 23,
+  "memories": [
+    {
+      "profile_id": "d1f4101e-9883-4ec7-90f4-dc2b69b21c34",
+      "uuid": "c6484aea-ae46-4f56-be44-46da7c99e7fd",
+      "year": 2024,
+      "summary": "Started a new career in technology after years of preparation and learning",
+      "personalized_summary": "Reflecting on when Started a new career in technology after years of preparation and learning - it shaped who I am today",
+      "categories": [
+        "career",
+        "growth"
+      ],
+      "transcript": "I finally landed my dream job in tech! After months of studying, coding bootcamps, and countless interviews, I got the offer. The feeling when they called was incredible - all that hard work finally paid off. My family was so proud, and I felt like I could conquer the world.",
+      "prompt": "Tell me about your work or career journey",
+      "date": "2024-06-15T00:00:00.000",
+      "emotion_score": 0.8,
+      "is_continuation": false,
+      "original_story_uuid": null,
+      "session_count": 1,
+      "type": "recording"
+    },
+    {
+      "profile_id": "d1f4101e-9883-4ec7-90f4-dc2b69b21c34",
+      "uuid": "1050715a-e0f8-4a0d-88ce-35fd0a51a57b",
+      "year": 2024,
+      "summary": "Adopted a rescue dog who brought so much joy and companionship",
+      "personalized_summary": "A meaningful time when Adopted a rescue dog who brought so much joy and companionship",
+      "categories": [
+        "love",
+        "growth"
+      ],
+      "transcript": "We went to the animal shelter just to look, but when I saw Max in his kennel, something just clicked. He was this scruffy little guy with the saddest eyes, but when he saw me, his tail started wagging. Three months later, he's completely transformed our home with his energy and love.",
+      "prompt": "Tell me about love in your life",
+      "date": "2024-06-15T00:00:00.000",
+      "emotion_score": 0.8,
+      "is_continuation": false,
+      "original_story_uuid": null,
+      "session_count": 1,
+      "type": "recording"
+    },
+    {
+      "profile_id": "d1f4101e-9883-4ec7-90f4-dc2b69b21c34",
+      "uuid": "680b1e9b-ded0-45e2-882b-f39634c53e7b",
+      "year": 2023,
+      "summary": "Grandmother passed away peacefully, leaving behind beautiful memories",
+      "personalized_summary": "A meaningful time when Grandmother passed away peacefully, leaving behind beautiful memories",
+      "categories": [
+        "family",
+        "loss",
+        "wisdom"
+      ],
+      "transcript": "Grandma left us last spring. It was peaceful - she was surrounded by all of us, holding hands. Even though it was sad, I felt grateful for all the time we had together. She taught me so much about resilience, kindness, and finding joy in simple things like her garden and Sunday dinners.",
+      "prompt": "Share a meaningful family memory",
+      "date": "2023-06-15T00:00:00.000",
+      "emotion_score": -0.3,
+      "is_continuation": false,
+      "original_story_uuid": null,
+      "session_count": 1,
+      "type": "recording"
+    },
+    {
+      "profile_id": "d1f4101e-9883-4ec7-90f4-dc2b69b21c34",
+      "uuid": "2e5ebf03-1114-4f76-8b72-a4c656d42655",
+      "year": 2023,
+      "summary": "Completed my first marathon after training for eight months",
+      "personalized_summary": "Reflecting on when Completed my first marathon after training for eight months - it shaped who I am today",
+      "categories": [
+        "health",
+        "achievement",
+        "growth"
+      ],
+      "transcript": "Mile 20 was brutal. My legs felt like concrete, and I wanted to quit so badly. But then I heard my friends cheering, and I remembered all those early morning training runs in the rain. When I crossed that finish line at 4:02:33, I cried. Not from pain, but from pure joy and accomplishment.",
+      "prompt": "Share something about your health journey",
+      "date": "2023-06-15T00:00:00.000",
+      "emotion_score": 0.8,
+      "is_continuation": false,
+      "original_story_uuid": null,
+      "session_count": 1,
+      "type": "recording"
+    },
+    {
+      "profile_id": "d1f4101e-9883-4ec7-90f4-dc2b69b21c34",
+      "uuid": "2752090b-78c2-4019-985e-463651a938e3",
+      "year": 2022,
+      "summary": "Faced financial difficulties but learned valuable lessons about budgeting",
+      "personalized_summary": "Reflecting on when Faced financial difficulties but learned valuable lessons about budgeting - it shaped who I am today",
+      "categories": [
+        "growth",
+        "wisdom"
+      ],
+      "transcript": "The pandemic really hit our finances hard. For months, we were living paycheck to paycheck, stressed about every expense. It was scary and humbling. But it taught me so much about what really matters, how to budget properly, and the importance of having an emergency fund.",
+      "prompt": "Tell me about a difficult time that taught you something important",
+      "date": "2022-06-15T00:00:00.000",
+      "emotion_score": -0.6,
+      "is_continuation": false,
+      "original_story_uuid": null,
+      "session_count": 1,
+      "type": "recording"
+    },
+    {
+      "profile_id": "d1f4101e-9883-4ec7-90f4-dc2b69b21c34",
+      "uuid": "889b2ab5-f43f-4809-b6bf-430c461b4952",
+      "year": 2022,
+      "summary": "Reconnected with childhood friends during a high school reunion",
+      "personalized_summary": "A meaningful time when Reconnected with childhood friends during a high school reunion",
+      "categories": [
+        "friends",
+        "love"
+      ],
+      "transcript": "I almost didn't go to the reunion - I was nervous about seeing everyone after so many years. But it was amazing! Sarah, Mike, and I talked for hours like no time had passed. We shared stories about our kids, careers, and dreams. It reminded me why these friendships were so special.",
+      "prompt": "Describe a special friendship",
+      "date": "2022-06-15T00:00:00.000",
+      "emotion_score": 0.8,
+      "is_continuation": false,
+      "original_story_uuid": null,
+      "session_count": 1,
+      "type": "recording"
+    },
+    {
+      "profile_id": "d1f4101e-9883-4ec7-90f4-dc2b69b21c34",
+      "uuid": "bbf87782-17c0-4f7a-a525-f2a3eddce4c8",
+      "year": 2021,
+      "summary": "Started learning guitar during lockdown and discovered a new passion",
+      "personalized_summary": "A meaningful time when Started learning guitar during lockdown and discovered a new passion",
+      "categories": [
+        "growth",
+        "adventure"
+      ],
+      "transcript": "Being stuck at home, I finally picked up that dusty guitar from the closet. YouTube became my teacher, and slowly, painfully, I learned my first chords. Now I can play a few songs, and it's become my favorite way to unwind. Music has always moved me, but creating it is magic.",
+      "prompt": "Describe a beautiful memory that still makes you smile",
+      "date": "2021-06-15T00:00:00.000",
+      "emotion_score": 0.8,
+      "is_continuation": false,
+      "original_story_uuid": null,
+      "session_count": 1,
+      "type": "recording"
+    },
+    {
+      "profile_id": "d1f4101e-9883-4ec7-90f4-dc2b69b21c34",
+      "uuid": "9ad7121e-98d3-46db-b74a-5b0a1b6e8bde",
+      "year": 2021,
+      "summary": "Lost my job due to company downsizing but found new opportunities",
+      "personalized_summary": "An important chapter in my life: Lost my job due to company downsizing but found new opportunities",
+      "categories": [
+        "career",
+        "growth"
+      ],
+      "transcript": "The day they laid off half our department was devastating. I'd been there for five years and felt so lost. But it forced me to reevaluate what I wanted. I took some online courses, networked more, and eventually found something even better that aligned with my values.",
+      "prompt": "Tell me about your work or career journey",
+      "date": "2021-06-15T00:00:00.000",
+      "emotion_score": -0.6,
+      "is_continuation": false,
+      "original_story_uuid": null,
+      "session_count": 1,
+      "type": "recording"
+    },
+    {
+      "profile_id": "d1f4101e-9883-4ec7-90f4-dc2b69b21c34",
+      "uuid": "c98ff166-7580-4d8a-88a7-9d94b77ad9e8",
+      "year": 2020,
+      "summary": "Got married in a small backyard ceremony due to pandemic restrictions",
+      "personalized_summary": "Got married in a small backyard ceremony due to pandemic restrictions",
+      "categories": [
+        "love",
+        "family"
+      ],
+      "transcript": "Our big wedding was canceled, but we decided to go ahead with just our immediate families in my parents' backyard. It was perfect - intimate, personal, and focused on what really mattered: our love and commitment. The photos are beautiful, and honestly, I wouldn't change a thing.",
+      "prompt": "Tell me about love in your life",
+      "date": "2020-06-15T00:00:00.000",
+      "emotion_score": 0.8,
+      "is_continuation": false,
+      "original_story_uuid": null,
+      "session_count": 1,
+      "type": "recording"
+    },
+    {
+      "profile_id": "d1f4101e-9883-4ec7-90f4-dc2b69b21c34",
+      "uuid": "5e6523c9-3df2-4bc3-a75e-8ee8e3ebc138",
+      "year": 2019,
+      "summary": "Backpacked through Southeast Asia and discovered incredible cultures",
+      "personalized_summary": "A meaningful time when Backpacked through Southeast Asia and discovered incredible cultures",
+      "categories": [
+        "adventure",
+        "growth",
+        "wisdom"
+      ],
+      "transcript": "Three months in Thailand, Vietnam, and Cambodia changed my perspective completely. The kindness of strangers, the incredible food, the ancient temples - everything was overwhelming in the best way. I learned to be comfortable with uncertainty and to appreciate different ways of living.",
+      "prompt": "Describe a beautiful memory that still makes you smile",
+      "date": "2019-06-15T00:00:00.000",
+      "emotion_score": 0.8,
+      "is_continuation": false,
+      "original_story_uuid": null,
+      "session_count": 1,
+      "type": "recording"
+    },
+    {
+      "profile_id": "d1f4101e-9883-4ec7-90f4-dc2b69b21c34",
+      "uuid": "9eb0f160-db1f-4731-9634-e9fa5f7ce193",
+      "year": 2019,
+      "summary": "Started therapy to work through anxiety and depression",
+      "personalized_summary": "A meaningful time when Started therapy to work through anxiety and depression",
+      "categories": [
+        "health",
+        "growth"
+      ],
+      "transcript": "Admitting I needed help was the hardest part. I'd been struggling with anxiety for years but always thought I could handle it alone. My therapist helped me understand my patterns and gave me tools to cope. It wasn't easy, but it was one of the best decisions I ever made.",
+      "prompt": "Share something about your health journey",
+      "date": "2019-06-15T00:00:00.000",
+      "emotion_score": -0.6,
+      "is_continuation": false,
+      "original_story_uuid": null,
+      "session_count": 1,
+      "type": "recording"
+    },
+    {
+      "profile_id": "d1f4101e-9883-4ec7-90f4-dc2b69b21c34",
+      "uuid": "f4ad05c0-348e-4d7e-8cff-c085a067d3e4",
+      "year": 2018,
+      "summary": "Graduated college with honors after years of hard work and sacrifice",
+      "personalized_summary": "An important chapter in my life: Graduated college with honors after years of hard work and sacrifice",
+      "categories": [
+        "education",
+        "achievement"
+      ],
+      "transcript": "Walking across that stage to get my diploma, I thought about all the late nights, the part-time jobs to pay tuition, the stress and doubt. But I did it - magna cum laude! Mom cried in the audience, and Dad couldn't stop taking pictures. Four years of sacrifice finally paid off.",
+      "prompt": "Tell me about your learning experiences",
+      "date": "2018-06-15T00:00:00.000",
+      "emotion_score": 0.8,
+      "is_continuation": false,
+      "original_story_uuid": null,
+      "session_count": 1,
+      "type": "recording"
+    },
+    {
+      "profile_id": "d1f4101e-9883-4ec7-90f4-dc2b69b21c34",
+      "uuid": "bd0a2cd1-1bde-4fc3-b8ef-5990466ac353",
+      "year": 2017,
+      "summary": "Ended a long-term relationship that wasn't working anymore",
+      "personalized_summary": "Ended a long-term relationship that wasn't working anymore",
+      "categories": [
+        "love",
+        "growth"
+      ],
+      "transcript": "Breaking up with Alex was one of the hardest things I've ever done. We'd been together for three years, but we'd grown in different directions. It was mutual but still heartbreaking. I learned so much about myself and what I need in a relationship.",
+      "prompt": "Tell me about love in your life",
+      "date": "2017-06-15T00:00:00.000",
+      "emotion_score": -0.6,
+      "is_continuation": false,
+      "original_story_uuid": null,
+      "session_count": 1,
+      "type": "recording"
+    },
+    {
+      "profile_id": "d1f4101e-9883-4ec7-90f4-dc2b69b21c34",
+      "uuid": "a3fdd8b0-2890-4acc-b4fe-b638d09845b8",
+      "year": 2016,
+      "summary": "Became an aunt when my sister had her first baby",
+      "personalized_summary": "Became an aunt when my sister had her first baby",
+      "categories": [
+        "family",
+        "love"
+      ],
+      "transcript": "When they placed little Emma in my arms for the first time, I was overwhelmed with love and protectiveness. She was so tiny and perfect. Watching my sister become a mother was incredible - seeing her strength and natural instincts. I never knew I could love someone so much so instantly.",
+      "prompt": "Share a meaningful family memory",
+      "date": "2016-06-15T00:00:00.000",
+      "emotion_score": 0.8,
+      "is_continuation": false,
+      "original_story_uuid": null,
+      "session_count": 1,
+      "type": "recording"
+    },
+    {
+      "profile_id": "d1f4101e-9883-4ec7-90f4-dc2b69b21c34",
+      "uuid": "febce085-d630-469e-a3d6-43b52ef03dc9",
+      "year": 2015,
+      "summary": "Dealt with a health scare that changed my perspective on life",
+      "personalized_summary": "Dealt with a health scare that changed my perspective on life",
+      "categories": [
+        "health",
+        "wisdom"
+      ],
+      "transcript": "The doctor said \"We need to run more tests\" and my world stopped. Waiting for results was agony - I couldn't eat, sleep, or focus on anything. Thankfully it was benign, but those two weeks taught me not to take my health for granted and to live more fully in the present.",
+      "prompt": "Share something about your health journey",
+      "date": "2015-06-15T00:00:00.000",
+      "emotion_score": -0.6,
+      "is_continuation": false,
+      "original_story_uuid": null,
+      "session_count": 1,
+      "type": "recording"
+    },
+    {
+      "profile_id": "d1f4101e-9883-4ec7-90f4-dc2b69b21c34",
+      "uuid": "fce777da-4247-4d76-88bc-bc60b2196fde",
+      "year": 2014,
+      "summary": "Climbed Mount Washington despite being afraid of heights",
+      "personalized_summary": "Climbed Mount Washington despite being afraid of heights",
+      "categories": [
+        "adventure",
+        "growth"
+      ],
+      "transcript": "I've always been terrified of heights, but something about that mountain called to me. The hike was brutal - my legs were shaking, and I wanted to turn back multiple times. But reaching the summit and seeing that view... I felt like I could do anything. It taught me that courage isn't the absence of fear.",
+      "prompt": "Tell me about a time that brought you great joy",
+      "date": "2014-06-15T00:00:00.000",
+      "emotion_score": 0.8,
+      "is_continuation": false,
+      "original_story_uuid": null,
+      "session_count": 1,
+      "type": "recording"
+    },
+    {
+      "profile_id": "d1f4101e-9883-4ec7-90f4-dc2b69b21c34",
+      "uuid": "482b9ee5-5f1f-4146-beb0-fabcdb7463b8",
+      "year": 2013,
+      "summary": "Started my first real job and learned about professional life",
+      "personalized_summary": "An important chapter in my life: Started my first real job and learned about professional life",
+      "categories": [
+        "career",
+        "growth"
+      ],
+      "transcript": "My first day at the office was terrifying and exciting. I had no idea what I was doing, and everyone seemed so confident and professional. I made mistakes, asked lots of questions, and slowly found my footing. It was the beginning of understanding what I wanted from my career.",
+      "prompt": "Tell me about your work or career journey",
+      "date": "2013-06-15T00:00:00.000",
+      "emotion_score": 0.0,
+      "is_continuation": false,
+      "original_story_uuid": null,
+      "session_count": 1,
+      "type": "recording"
+    },
+    {
+      "profile_id": "d1f4101e-9883-4ec7-90f4-dc2b69b21c34",
+      "uuid": "e6281867-2938-40f5-b8dc-66f2d5fec742",
+      "year": 2012,
+      "summary": "Studied abroad in Spain and became fluent in Spanish",
+      "personalized_summary": "A meaningful time when Studied abroad in Spain and became fluent in Spanish",
+      "categories": [
+        "education",
+        "adventure"
+      ],
+      "transcript": "Living with the Rodriguez family in Sevilla was life-changing. They barely spoke English, so I had to learn Spanish quickly. At first I was frustrated and embarrassed by my mistakes, but they were so patient and encouraging. By the end of the semester, I was dreaming in Spanish!",
+      "prompt": "Tell me about your learning experiences",
+      "date": "2012-06-15T00:00:00.000",
+      "emotion_score": 0.8,
+      "is_continuation": false,
+      "original_story_uuid": null,
+      "session_count": 1,
+      "type": "recording"
+    },
+    {
+      "profile_id": "d1f4101e-9883-4ec7-90f4-dc2b69b21c34",
+      "uuid": "5af6ae11-d0d1-4d27-b5b5-a5f7b25fa944",
+      "year": 2011,
+      "summary": "Met my best friend during freshman year of college",
+      "personalized_summary": "An important chapter in my life: Met my best friend during freshman year of college",
+      "categories": [
+        "friends",
+        "love"
+      ],
+      "transcript": "I was homesick and lonely during my first weeks at college. Then I met Jamie in the library - we were both stressed about the same chemistry exam. We started studying together, and before I knew it, we were inseparable. Thirteen years later, she's still my closest friend.",
+      "prompt": "Describe a special friendship",
+      "date": "2011-06-15T00:00:00.000",
+      "emotion_score": 0.8,
+      "is_continuation": false,
+      "original_story_uuid": null,
+      "session_count": 1,
+      "type": "recording"
+    },
+    {
+      "profile_id": "d1f4101e-9883-4ec7-90f4-dc2b69b21c34",
+      "uuid": "485aef72-06e3-4bdf-8699-a4f80ae103a3",
+      "year": 2010,
+      "summary": "Graduated high school and felt excited but scared about the future",
+      "personalized_summary": "Graduated high school and felt excited but scared about the future",
+      "categories": [
+        "education",
+        "growth"
+      ],
+      "transcript": "High school graduation felt surreal. I was excited about college and independence, but also terrified about leaving home and everything familiar. The ceremony was long and boring, but when they called my name, I felt this mix of pride and nervousness about what came next.",
+      "prompt": "Tell me about your learning experiences",
+      "date": "2010-06-15T00:00:00.000",
+      "emotion_score": 0.0,
+      "is_continuation": false,
+      "original_story_uuid": null,
+      "session_count": 1,
+      "type": "recording"
+    },
+    {
+      "profile_id": "d1f4101e-9883-4ec7-90f4-dc2b69b21c34",
+      "uuid": "c666c428-b975-4a1f-b817-662a190383e3",
+      "year": 2023,
+      "summary": "Started renovating our first home together",
+      "personalized_summary": "An important chapter in my life: Started renovating our first home together",
+      "categories": [
+        "family",
+        "growth"
+      ],
+      "transcript": "We bought this old Victorian house that needed everything - new plumbing, electrical, flooring, you name it. It was overwhelming but exciting. We spent weekends at Home Depot, watching YouTube tutorials, and slowly learning how to be homeowners.",
+      "prompt": "Share a meaningful family memory",
+      "date": "2023-06-15T00:00:00.000",
+      "emotion_score": 0.8,
+      "is_continuation": false,
+      "original_story_uuid": null,
+      "session_count": 3,
+      "type": "recording"
+    },
+    {
+      "profile_id": "d1f4101e-9883-4ec7-90f4-dc2b69b21c34",
+      "uuid": "db3cdcc6-1d75-41af-b6a2-bd08c5a8f653",
+      "year": 2023,
+      "summary": "Continuation of home renovation",
+      "personalized_summary": "Continuation of home renovation",
+      "categories": [
+        "family",
+        "growth"
+      ],
+      "transcript": "Three months in, we hit a major snag. When we opened up the kitchen wall, we found water damage and had to redo all the plumbing. The costs were adding up, and we were living in chaos with no functioning kitchen. We started questioning if we bit off more than we could chew.",
+      "prompt": "Share a meaningful family memory",
+      "date": "2023-06-15T00:00:00.000",
+      "emotion_score": -0.6,
+      "is_continuation": true,
+      "original_story_uuid": "c666c428-b975-4a1f-b817-662a190383e3",
+      "session_count": 1,
+      "type": "recording"
+    },
+    {
+      "profile_id": "d1f4101e-9883-4ec7-90f4-dc2b69b21c34",
+      "uuid": "718aa24c-009a-498d-8cc7-01dc67af2b10",
+      "year": 2023,
+      "summary": "Finished home renovation project",
+      "personalized_summary": "Finished home renovation project",
+      "categories": [
+        "family",
+        "achievement"
+      ],
+      "transcript": "Eight months later, we finally finished! The house is beautiful - modern kitchen, refinished hardwood floors, and a gorgeous master bathroom. All those weekends of hard work, the stress, and the money were worth it. We had a housewarming party and everyone was amazed at the transformation.",
+      "prompt": "Share a meaningful family memory",
+      "date": "2023-06-15T00:00:00.000",
+      "emotion_score": 0.8,
+      "is_continuation": true,
+      "original_story_uuid": "c666c428-b975-4a1f-b817-662a190383e3",
+      "session_count": 1,
+      "type": "recording"
+    }
+  ],
+  "api_calls": [
+    "curl -X POST \"http://localhost:3000/api/memories\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"profile_id\":\"d1f4101e-9883-4ec7-90f4-dc2b69b21c34\",\"uuid\":\"c6484aea-ae46-4f56-be44-46da7c99e7fd\",\"year\":2024,\"summary\":\"Started a new career in technology after years of preparation and learning\",\"personalized_summary\":\"Reflecting on when Started a new career in technology after years of preparation and learning - it shaped who I am today\",\"categories\":[\"career\",\"growth\"],\"transcript\":\"I finally landed my dream job in tech! After months of studying, coding bootcamps, and countless interviews, I got the offer. The feeling when they called was incredible - all that hard work finally paid off. My family was so proud, and I felt like I could conquer the world.\",\"prompt\":\"Tell me about your work or career journey\",\"date\":\"2024-06-15T00:00:00.000\",\"emotion_score\":0.8,\"is_continuation\":false,\"original_story_uuid\":null,\"session_count\":1,\"type\":\"recording\"}'\n",
+    "curl -X POST \"http://localhost:3000/api/memories\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"profile_id\":\"d1f4101e-9883-4ec7-90f4-dc2b69b21c34\",\"uuid\":\"1050715a-e0f8-4a0d-88ce-35fd0a51a57b\",\"year\":2024,\"summary\":\"Adopted a rescue dog who brought so much joy and companionship\",\"personalized_summary\":\"A meaningful time when Adopted a rescue dog who brought so much joy and companionship\",\"categories\":[\"love\",\"growth\"],\"transcript\":\"We went to the animal shelter just to look, but when I saw Max in his kennel, something just clicked. He was this scruffy little guy with the saddest eyes, but when he saw me, his tail started wagging. Three months later, he's completely transformed our home with his energy and love.\",\"prompt\":\"Tell me about love in your life\",\"date\":\"2024-06-15T00:00:00.000\",\"emotion_score\":0.8,\"is_continuation\":false,\"original_story_uuid\":null,\"session_count\":1,\"type\":\"recording\"}'\n",
+    "curl -X POST \"http://localhost:3000/api/memories\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"profile_id\":\"d1f4101e-9883-4ec7-90f4-dc2b69b21c34\",\"uuid\":\"680b1e9b-ded0-45e2-882b-f39634c53e7b\",\"year\":2023,\"summary\":\"Grandmother passed away peacefully, leaving behind beautiful memories\",\"personalized_summary\":\"A meaningful time when Grandmother passed away peacefully, leaving behind beautiful memories\",\"categories\":[\"family\",\"loss\",\"wisdom\"],\"transcript\":\"Grandma left us last spring. It was peaceful - she was surrounded by all of us, holding hands. Even though it was sad, I felt grateful for all the time we had together. She taught me so much about resilience, kindness, and finding joy in simple things like her garden and Sunday dinners.\",\"prompt\":\"Share a meaningful family memory\",\"date\":\"2023-06-15T00:00:00.000\",\"emotion_score\":-0.3,\"is_continuation\":false,\"original_story_uuid\":null,\"session_count\":1,\"type\":\"recording\"}'\n",
+    "curl -X POST \"http://localhost:3000/api/memories\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"profile_id\":\"d1f4101e-9883-4ec7-90f4-dc2b69b21c34\",\"uuid\":\"2e5ebf03-1114-4f76-8b72-a4c656d42655\",\"year\":2023,\"summary\":\"Completed my first marathon after training for eight months\",\"personalized_summary\":\"Reflecting on when Completed my first marathon after training for eight months - it shaped who I am today\",\"categories\":[\"health\",\"achievement\",\"growth\"],\"transcript\":\"Mile 20 was brutal. My legs felt like concrete, and I wanted to quit so badly. But then I heard my friends cheering, and I remembered all those early morning training runs in the rain. When I crossed that finish line at 4:02:33, I cried. Not from pain, but from pure joy and accomplishment.\",\"prompt\":\"Share something about your health journey\",\"date\":\"2023-06-15T00:00:00.000\",\"emotion_score\":0.8,\"is_continuation\":false,\"original_story_uuid\":null,\"session_count\":1,\"type\":\"recording\"}'\n",
+    "curl -X POST \"http://localhost:3000/api/memories\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"profile_id\":\"d1f4101e-9883-4ec7-90f4-dc2b69b21c34\",\"uuid\":\"2752090b-78c2-4019-985e-463651a938e3\",\"year\":2022,\"summary\":\"Faced financial difficulties but learned valuable lessons about budgeting\",\"personalized_summary\":\"Reflecting on when Faced financial difficulties but learned valuable lessons about budgeting - it shaped who I am today\",\"categories\":[\"growth\",\"wisdom\"],\"transcript\":\"The pandemic really hit our finances hard. For months, we were living paycheck to paycheck, stressed about every expense. It was scary and humbling. But it taught me so much about what really matters, how to budget properly, and the importance of having an emergency fund.\",\"prompt\":\"Tell me about a difficult time that taught you something important\",\"date\":\"2022-06-15T00:00:00.000\",\"emotion_score\":-0.6,\"is_continuation\":false,\"original_story_uuid\":null,\"session_count\":1,\"type\":\"recording\"}'\n",
+    "curl -X POST \"http://localhost:3000/api/memories\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"profile_id\":\"d1f4101e-9883-4ec7-90f4-dc2b69b21c34\",\"uuid\":\"889b2ab5-f43f-4809-b6bf-430c461b4952\",\"year\":2022,\"summary\":\"Reconnected with childhood friends during a high school reunion\",\"personalized_summary\":\"A meaningful time when Reconnected with childhood friends during a high school reunion\",\"categories\":[\"friends\",\"love\"],\"transcript\":\"I almost didn't go to the reunion - I was nervous about seeing everyone after so many years. But it was amazing! Sarah, Mike, and I talked for hours like no time had passed. We shared stories about our kids, careers, and dreams. It reminded me why these friendships were so special.\",\"prompt\":\"Describe a special friendship\",\"date\":\"2022-06-15T00:00:00.000\",\"emotion_score\":0.8,\"is_continuation\":false,\"original_story_uuid\":null,\"session_count\":1,\"type\":\"recording\"}'\n",
+    "curl -X POST \"http://localhost:3000/api/memories\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"profile_id\":\"d1f4101e-9883-4ec7-90f4-dc2b69b21c34\",\"uuid\":\"bbf87782-17c0-4f7a-a525-f2a3eddce4c8\",\"year\":2021,\"summary\":\"Started learning guitar during lockdown and discovered a new passion\",\"personalized_summary\":\"A meaningful time when Started learning guitar during lockdown and discovered a new passion\",\"categories\":[\"growth\",\"adventure\"],\"transcript\":\"Being stuck at home, I finally picked up that dusty guitar from the closet. YouTube became my teacher, and slowly, painfully, I learned my first chords. Now I can play a few songs, and it's become my favorite way to unwind. Music has always moved me, but creating it is magic.\",\"prompt\":\"Describe a beautiful memory that still makes you smile\",\"date\":\"2021-06-15T00:00:00.000\",\"emotion_score\":0.8,\"is_continuation\":false,\"original_story_uuid\":null,\"session_count\":1,\"type\":\"recording\"}'\n",
+    "curl -X POST \"http://localhost:3000/api/memories\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"profile_id\":\"d1f4101e-9883-4ec7-90f4-dc2b69b21c34\",\"uuid\":\"9ad7121e-98d3-46db-b74a-5b0a1b6e8bde\",\"year\":2021,\"summary\":\"Lost my job due to company downsizing but found new opportunities\",\"personalized_summary\":\"An important chapter in my life: Lost my job due to company downsizing but found new opportunities\",\"categories\":[\"career\",\"growth\"],\"transcript\":\"The day they laid off half our department was devastating. I'd been there for five years and felt so lost. But it forced me to reevaluate what I wanted. I took some online courses, networked more, and eventually found something even better that aligned with my values.\",\"prompt\":\"Tell me about your work or career journey\",\"date\":\"2021-06-15T00:00:00.000\",\"emotion_score\":-0.6,\"is_continuation\":false,\"original_story_uuid\":null,\"session_count\":1,\"type\":\"recording\"}'\n",
+    "curl -X POST \"http://localhost:3000/api/memories\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"profile_id\":\"d1f4101e-9883-4ec7-90f4-dc2b69b21c34\",\"uuid\":\"c98ff166-7580-4d8a-88a7-9d94b77ad9e8\",\"year\":2020,\"summary\":\"Got married in a small backyard ceremony due to pandemic restrictions\",\"personalized_summary\":\"Got married in a small backyard ceremony due to pandemic restrictions\",\"categories\":[\"love\",\"family\"],\"transcript\":\"Our big wedding was canceled, but we decided to go ahead with just our immediate families in my parents' backyard. It was perfect - intimate, personal, and focused on what really mattered: our love and commitment. The photos are beautiful, and honestly, I wouldn't change a thing.\",\"prompt\":\"Tell me about love in your life\",\"date\":\"2020-06-15T00:00:00.000\",\"emotion_score\":0.8,\"is_continuation\":false,\"original_story_uuid\":null,\"session_count\":1,\"type\":\"recording\"}'\n",
+    "curl -X POST \"http://localhost:3000/api/memories\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"profile_id\":\"d1f4101e-9883-4ec7-90f4-dc2b69b21c34\",\"uuid\":\"5e6523c9-3df2-4bc3-a75e-8ee8e3ebc138\",\"year\":2019,\"summary\":\"Backpacked through Southeast Asia and discovered incredible cultures\",\"personalized_summary\":\"A meaningful time when Backpacked through Southeast Asia and discovered incredible cultures\",\"categories\":[\"adventure\",\"growth\",\"wisdom\"],\"transcript\":\"Three months in Thailand, Vietnam, and Cambodia changed my perspective completely. The kindness of strangers, the incredible food, the ancient temples - everything was overwhelming in the best way. I learned to be comfortable with uncertainty and to appreciate different ways of living.\",\"prompt\":\"Describe a beautiful memory that still makes you smile\",\"date\":\"2019-06-15T00:00:00.000\",\"emotion_score\":0.8,\"is_continuation\":false,\"original_story_uuid\":null,\"session_count\":1,\"type\":\"recording\"}'\n",
+    "curl -X POST \"http://localhost:3000/api/memories\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"profile_id\":\"d1f4101e-9883-4ec7-90f4-dc2b69b21c34\",\"uuid\":\"9eb0f160-db1f-4731-9634-e9fa5f7ce193\",\"year\":2019,\"summary\":\"Started therapy to work through anxiety and depression\",\"personalized_summary\":\"A meaningful time when Started therapy to work through anxiety and depression\",\"categories\":[\"health\",\"growth\"],\"transcript\":\"Admitting I needed help was the hardest part. I'd been struggling with anxiety for years but always thought I could handle it alone. My therapist helped me understand my patterns and gave me tools to cope. It wasn't easy, but it was one of the best decisions I ever made.\",\"prompt\":\"Share something about your health journey\",\"date\":\"2019-06-15T00:00:00.000\",\"emotion_score\":-0.6,\"is_continuation\":false,\"original_story_uuid\":null,\"session_count\":1,\"type\":\"recording\"}'\n",
+    "curl -X POST \"http://localhost:3000/api/memories\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"profile_id\":\"d1f4101e-9883-4ec7-90f4-dc2b69b21c34\",\"uuid\":\"f4ad05c0-348e-4d7e-8cff-c085a067d3e4\",\"year\":2018,\"summary\":\"Graduated college with honors after years of hard work and sacrifice\",\"personalized_summary\":\"An important chapter in my life: Graduated college with honors after years of hard work and sacrifice\",\"categories\":[\"education\",\"achievement\"],\"transcript\":\"Walking across that stage to get my diploma, I thought about all the late nights, the part-time jobs to pay tuition, the stress and doubt. But I did it - magna cum laude! Mom cried in the audience, and Dad couldn't stop taking pictures. Four years of sacrifice finally paid off.\",\"prompt\":\"Tell me about your learning experiences\",\"date\":\"2018-06-15T00:00:00.000\",\"emotion_score\":0.8,\"is_continuation\":false,\"original_story_uuid\":null,\"session_count\":1,\"type\":\"recording\"}'\n",
+    "curl -X POST \"http://localhost:3000/api/memories\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"profile_id\":\"d1f4101e-9883-4ec7-90f4-dc2b69b21c34\",\"uuid\":\"bd0a2cd1-1bde-4fc3-b8ef-5990466ac353\",\"year\":2017,\"summary\":\"Ended a long-term relationship that wasn't working anymore\",\"personalized_summary\":\"Ended a long-term relationship that wasn't working anymore\",\"categories\":[\"love\",\"growth\"],\"transcript\":\"Breaking up with Alex was one of the hardest things I've ever done. We'd been together for three years, but we'd grown in different directions. It was mutual but still heartbreaking. I learned so much about myself and what I need in a relationship.\",\"prompt\":\"Tell me about love in your life\",\"date\":\"2017-06-15T00:00:00.000\",\"emotion_score\":-0.6,\"is_continuation\":false,\"original_story_uuid\":null,\"session_count\":1,\"type\":\"recording\"}'\n",
+    "curl -X POST \"http://localhost:3000/api/memories\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"profile_id\":\"d1f4101e-9883-4ec7-90f4-dc2b69b21c34\",\"uuid\":\"a3fdd8b0-2890-4acc-b4fe-b638d09845b8\",\"year\":2016,\"summary\":\"Became an aunt when my sister had her first baby\",\"personalized_summary\":\"Became an aunt when my sister had her first baby\",\"categories\":[\"family\",\"love\"],\"transcript\":\"When they placed little Emma in my arms for the first time, I was overwhelmed with love and protectiveness. She was so tiny and perfect. Watching my sister become a mother was incredible - seeing her strength and natural instincts. I never knew I could love someone so much so instantly.\",\"prompt\":\"Share a meaningful family memory\",\"date\":\"2016-06-15T00:00:00.000\",\"emotion_score\":0.8,\"is_continuation\":false,\"original_story_uuid\":null,\"session_count\":1,\"type\":\"recording\"}'\n",
+    "curl -X POST \"http://localhost:3000/api/memories\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"profile_id\":\"d1f4101e-9883-4ec7-90f4-dc2b69b21c34\",\"uuid\":\"febce085-d630-469e-a3d6-43b52ef03dc9\",\"year\":2015,\"summary\":\"Dealt with a health scare that changed my perspective on life\",\"personalized_summary\":\"Dealt with a health scare that changed my perspective on life\",\"categories\":[\"health\",\"wisdom\"],\"transcript\":\"The doctor said \\\"We need to run more tests\\\" and my world stopped. Waiting for results was agony - I couldn't eat, sleep, or focus on anything. Thankfully it was benign, but those two weeks taught me not to take my health for granted and to live more fully in the present.\",\"prompt\":\"Share something about your health journey\",\"date\":\"2015-06-15T00:00:00.000\",\"emotion_score\":-0.6,\"is_continuation\":false,\"original_story_uuid\":null,\"session_count\":1,\"type\":\"recording\"}'\n",
+    "curl -X POST \"http://localhost:3000/api/memories\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"profile_id\":\"d1f4101e-9883-4ec7-90f4-dc2b69b21c34\",\"uuid\":\"fce777da-4247-4d76-88bc-bc60b2196fde\",\"year\":2014,\"summary\":\"Climbed Mount Washington despite being afraid of heights\",\"personalized_summary\":\"Climbed Mount Washington despite being afraid of heights\",\"categories\":[\"adventure\",\"growth\"],\"transcript\":\"I've always been terrified of heights, but something about that mountain called to me. The hike was brutal - my legs were shaking, and I wanted to turn back multiple times. But reaching the summit and seeing that view... I felt like I could do anything. It taught me that courage isn't the absence of fear.\",\"prompt\":\"Tell me about a time that brought you great joy\",\"date\":\"2014-06-15T00:00:00.000\",\"emotion_score\":0.8,\"is_continuation\":false,\"original_story_uuid\":null,\"session_count\":1,\"type\":\"recording\"}'\n",
+    "curl -X POST \"http://localhost:3000/api/memories\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"profile_id\":\"d1f4101e-9883-4ec7-90f4-dc2b69b21c34\",\"uuid\":\"482b9ee5-5f1f-4146-beb0-fabcdb7463b8\",\"year\":2013,\"summary\":\"Started my first real job and learned about professional life\",\"personalized_summary\":\"An important chapter in my life: Started my first real job and learned about professional life\",\"categories\":[\"career\",\"growth\"],\"transcript\":\"My first day at the office was terrifying and exciting. I had no idea what I was doing, and everyone seemed so confident and professional. I made mistakes, asked lots of questions, and slowly found my footing. It was the beginning of understanding what I wanted from my career.\",\"prompt\":\"Tell me about your work or career journey\",\"date\":\"2013-06-15T00:00:00.000\",\"emotion_score\":0.0,\"is_continuation\":false,\"original_story_uuid\":null,\"session_count\":1,\"type\":\"recording\"}'\n",
+    "curl -X POST \"http://localhost:3000/api/memories\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"profile_id\":\"d1f4101e-9883-4ec7-90f4-dc2b69b21c34\",\"uuid\":\"e6281867-2938-40f5-b8dc-66f2d5fec742\",\"year\":2012,\"summary\":\"Studied abroad in Spain and became fluent in Spanish\",\"personalized_summary\":\"A meaningful time when Studied abroad in Spain and became fluent in Spanish\",\"categories\":[\"education\",\"adventure\"],\"transcript\":\"Living with the Rodriguez family in Sevilla was life-changing. They barely spoke English, so I had to learn Spanish quickly. At first I was frustrated and embarrassed by my mistakes, but they were so patient and encouraging. By the end of the semester, I was dreaming in Spanish!\",\"prompt\":\"Tell me about your learning experiences\",\"date\":\"2012-06-15T00:00:00.000\",\"emotion_score\":0.8,\"is_continuation\":false,\"original_story_uuid\":null,\"session_count\":1,\"type\":\"recording\"}'\n",
+    "curl -X POST \"http://localhost:3000/api/memories\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"profile_id\":\"d1f4101e-9883-4ec7-90f4-dc2b69b21c34\",\"uuid\":\"5af6ae11-d0d1-4d27-b5b5-a5f7b25fa944\",\"year\":2011,\"summary\":\"Met my best friend during freshman year of college\",\"personalized_summary\":\"An important chapter in my life: Met my best friend during freshman year of college\",\"categories\":[\"friends\",\"love\"],\"transcript\":\"I was homesick and lonely during my first weeks at college. Then I met Jamie in the library - we were both stressed about the same chemistry exam. We started studying together, and before I knew it, we were inseparable. Thirteen years later, she's still my closest friend.\",\"prompt\":\"Describe a special friendship\",\"date\":\"2011-06-15T00:00:00.000\",\"emotion_score\":0.8,\"is_continuation\":false,\"original_story_uuid\":null,\"session_count\":1,\"type\":\"recording\"}'\n",
+    "curl -X POST \"http://localhost:3000/api/memories\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"profile_id\":\"d1f4101e-9883-4ec7-90f4-dc2b69b21c34\",\"uuid\":\"485aef72-06e3-4bdf-8699-a4f80ae103a3\",\"year\":2010,\"summary\":\"Graduated high school and felt excited but scared about the future\",\"personalized_summary\":\"Graduated high school and felt excited but scared about the future\",\"categories\":[\"education\",\"growth\"],\"transcript\":\"High school graduation felt surreal. I was excited about college and independence, but also terrified about leaving home and everything familiar. The ceremony was long and boring, but when they called my name, I felt this mix of pride and nervousness about what came next.\",\"prompt\":\"Tell me about your learning experiences\",\"date\":\"2010-06-15T00:00:00.000\",\"emotion_score\":0.0,\"is_continuation\":false,\"original_story_uuid\":null,\"session_count\":1,\"type\":\"recording\"}'\n",
+    "curl -X POST \"http://localhost:3000/api/memories\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"profile_id\":\"d1f4101e-9883-4ec7-90f4-dc2b69b21c34\",\"uuid\":\"c666c428-b975-4a1f-b817-662a190383e3\",\"year\":2023,\"summary\":\"Started renovating our first home together\",\"personalized_summary\":\"An important chapter in my life: Started renovating our first home together\",\"categories\":[\"family\",\"growth\"],\"transcript\":\"We bought this old Victorian house that needed everything - new plumbing, electrical, flooring, you name it. It was overwhelming but exciting. We spent weekends at Home Depot, watching YouTube tutorials, and slowly learning how to be homeowners.\",\"prompt\":\"Share a meaningful family memory\",\"date\":\"2023-06-15T00:00:00.000\",\"emotion_score\":0.8,\"is_continuation\":false,\"original_story_uuid\":null,\"session_count\":3,\"type\":\"recording\"}'\n",
+    "curl -X POST \"http://localhost:3000/api/memories\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"profile_id\":\"d1f4101e-9883-4ec7-90f4-dc2b69b21c34\",\"uuid\":\"db3cdcc6-1d75-41af-b6a2-bd08c5a8f653\",\"year\":2023,\"summary\":\"Continuation of home renovation\",\"personalized_summary\":\"Continuation of home renovation\",\"categories\":[\"family\",\"growth\"],\"transcript\":\"Three months in, we hit a major snag. When we opened up the kitchen wall, we found water damage and had to redo all the plumbing. The costs were adding up, and we were living in chaos with no functioning kitchen. We started questioning if we bit off more than we could chew.\",\"prompt\":\"Share a meaningful family memory\",\"date\":\"2023-06-15T00:00:00.000\",\"emotion_score\":-0.6,\"is_continuation\":true,\"original_story_uuid\":\"c666c428-b975-4a1f-b817-662a190383e3\",\"session_count\":1,\"type\":\"recording\"}'\n",
+    "curl -X POST \"http://localhost:3000/api/memories\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"profile_id\":\"d1f4101e-9883-4ec7-90f4-dc2b69b21c34\",\"uuid\":\"718aa24c-009a-498d-8cc7-01dc67af2b10\",\"year\":2023,\"summary\":\"Finished home renovation project\",\"personalized_summary\":\"Finished home renovation project\",\"categories\":[\"family\",\"achievement\"],\"transcript\":\"Eight months later, we finally finished! The house is beautiful - modern kitchen, refinished hardwood floors, and a gorgeous master bathroom. All those weekends of hard work, the stress, and the money were worth it. We had a housewarming party and everyone was amazed at the transformation.\",\"prompt\":\"Share a meaningful family memory\",\"date\":\"2023-06-15T00:00:00.000\",\"emotion_score\":0.8,\"is_continuation\":true,\"original_story_uuid\":\"c666c428-b975-4a1f-b817-662a190383e3\",\"session_count\":1,\"type\":\"recording\"}'\n"
+  ],
+  "categories_represented": [
+    "achievement",
+    "adventure",
+    "career",
+    "education",
+    "family",
+    "friends",
+    "growth",
+    "health",
+    "loss",
+    "love",
+    "wisdom"
+  ],
+  "year_range": {
+    "earliest": 2010,
+    "latest": 2024
+  }
+}

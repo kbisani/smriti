@@ -2,11 +2,101 @@ import 'package:flutter/material.dart';
 import '../models/sub_user_profile.dart';
 import '../theme.dart';
 import 'add_profile_page.dart';
+import '../utils/test_data_importer.dart';
+import '../storage/qdrant_profile_service.dart';
 
 class ProfilePage extends StatelessWidget {
   final SubUserProfile profile;
   
   const ProfilePage({Key? key, required this.profile}) : super(key: key);
+  
+  Future<void> _importTestData(BuildContext context) async {
+    // Show confirmation dialog first
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Import Test Data'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('This will import 20+ realistic memories to test app features:'),
+            const SizedBox(height: 12),
+            Text('• Memories from 2010-2024'),
+            Text('• Varied emotional content'),
+            Text('• Multi-session stories'),
+            Text('• All categories represented'),
+            const SizedBox(height: 12),
+            Text('Import may take 30-60 seconds.', 
+                 style: TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text('Import'),
+          ),
+        ],
+      ),
+    );
+    
+    if (confirmed != true) return;
+    
+    // Show loading dialog
+    if (!context.mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text('Importing test data...'),
+            const SizedBox(height: 8),
+            Text('This may take a moment', 
+                 style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+          ],
+        ),
+      ),
+    );
+    
+    try {
+      final profileService = QdrantProfileService();
+      final importer = TestDataImporter(profileService);
+      await importer.importTestData(profile.id);
+      
+      if (!context.mounted) return;
+      Navigator.of(context).pop(); // Close loading dialog
+      
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('✅ Test data imported successfully!'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      
+    } catch (e) {
+      if (!context.mounted) return;
+      Navigator.of(context).pop(); // Close loading dialog
+      
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Import failed: ${e.toString()}'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 5),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -255,6 +345,72 @@ class ProfilePage extends StatelessWidget {
                   ],
                 ),
               ),
+              
+              const SizedBox(height: 24),
+              
+              // Developer Tools (only show in debug mode)
+              if (true) ...[
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.amber.withOpacity(0.3)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.developer_mode, color: Colors.amber[700], size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Developer Tools',
+                            style: AppTextStyles.headline.copyWith(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.amber[700],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Import realistic test data to explore app features',
+                        style: AppTextStyles.body.copyWith(
+                          fontSize: 14,
+                          color: Colors.amber[800],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () => _importTestData(context),
+                          icon: Icon(Icons.upload_file, size: 18),
+                          label: Text('Import Test Data (20+ memories)'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.amber[600],
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '• Spans 2010-2024 with varied emotions\n• Includes multi-session stories\n• Tests timeline, graph, and archive features',
+                        style: AppTextStyles.label.copyWith(
+                          fontSize: 12,
+                          color: Colors.amber[700],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
         ),
